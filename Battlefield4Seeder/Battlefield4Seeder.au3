@@ -56,13 +56,19 @@ if $DisplayPlayerCount == "" Then
    $DisplayPlayerCount = "true"
 EndIf
 
+Global $PlayerCountRetry=IniRead($Settingsini, "All", "PlayerCountRetry", "")
+if $PlayerCountRetry == "" Then
+	IniWrite($Settingsini, "All", "PlayerCountRetry", "5")
+	$DisplayPlayerCount = 5
+EndIf
+
 while 1
 
-   if( not( WinExists("Battlefield 4?")) And (GetPlayerCount($ServerAddress) < $MinimumPlayers)) Then
+   if( not( WinExists("Battlefield 4?")) And (AttemptGetPlayerCount($ServerAddress) < $MinimumPlayers)) Then
 	     JoinServer($ServerAddress)
 	  EndIf
 
-   if( WinExists("Battlefield 4?") And (GetPlayerCount($ServerAddress) >$MaximumPlayers)) Then
+   if( WinExists("Battlefield 4?") And (AttemptGetPlayerCount($ServerAddress) >$MaximumPlayers)) Then
 	     KickSelf()
 	  EndIf
 
@@ -74,20 +80,29 @@ while 1
 
 WEnd
 
+Func AttemptGetPlayerCount($server_page)
+	$i = -1
+	$player_count = -1
+	Do
+		if($i > -1 And $player_count == -1) Then
+			$rt = MsgBox(1, $ProgName, "Could not parse player count. Server may be down. Retrying in 10 seconds." & @CRLF & "Attempts: " & $i + 1, 10)
+			if($rt == 2) Then Exit
+		EndIf
+		$i += 1
+		$player_count = GetPlayerCount($server_page)
+	Until $i == $PlayerCountRetry OR $player_count <> -1
 
+	if($player_count = -1) Then
+		MsgBox(0, $Progname, "Could not parse player count. Server may be down.")
+		Exit
+	EndIf
+
+	return $player_count
+EndFunc
 
 Func GetPlayerCount($server_page)
-
-   ;$ie = _IECreate($server_page, 0, 0)
-   ;OnAutoItExitRegister("QuitIEInstance")
-   ;$response = _IEBodyReadHTML($ie)
-   ;_IEQuit($ie)
-   ;OnAutoItExitUnRegister("QuitIEInstance")
-   ;$binaryResponse = InetRead($server_page, 1)
-   ;$nBytesRead = @extended
+   ; Use InetRead instead of creating an IE window instance
    $response =  BinaryToString(InetRead($server_page, 1))
-   ;MsgBox(0, $ProgName, "Bytes Read: " & $nBytesRead)
-   MsgBox(0,$ProgName, $response)
 
   ; ConsoleWrite($response)
    $slots_loc = StringInStr($response, '"slots":{')
@@ -103,10 +118,8 @@ Func GetPlayerCount($server_page)
    if $DisplayPlayerCount == "true" Then TrayTip($ProgName,"Player count: "& $player_count , 10)
 
    if(not StringIsDigit($player_count)) Then
-	  MsgBox(0,$ProgName, "Could not parse player count. Server may be down.")
-	  Exit
+	  $player_count = -1
    EndIf
-
 
    return $player_count
 EndFunc
@@ -124,7 +137,7 @@ Func JoinServer($server_page)
 
 
    WinWaitActive("Battlefield 4?", "",5*60)
-   sleep(10000)
+   sleep(30000)
    Send("!{TAB}")
       _IEQuit($ie)
    OnAutoItExitUnRegister("QuitIEInstance")
