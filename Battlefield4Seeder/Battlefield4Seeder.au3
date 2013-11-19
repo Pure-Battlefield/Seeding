@@ -7,11 +7,11 @@
 #include <Misc.au3>
 #include <File.au3>
 
-opt("WinTitleMatchMode",1)
+opt("WinTitleMatchMode",4)
 $Settingsini = "BF4SeederSettings.ini"
 $ProgName = "Battlefield4 Auto-Seeder"
 $LogFileName = "BF4SeederLog.log"
-$WindowName = "Battlefield 4"
+$BFWindowName = "[REGEXPTITLE:^Battlefield 4.$]"
 $HangProtectionTimeLimit = 30 * 60 * 1000  ;30 minutes
 Global $ie
 
@@ -86,19 +86,19 @@ $hangProtectionTimer = TimerInit()
 while 1
 	$playerCount = AttemptGetPlayerCount($ServerAddress)
 
-	if( not( WinExists($WindowName)) And ($playerCount < $MinimumPlayers)) Then
+	if( not( WinExists($BFWindowName)) And ($playerCount < $MinimumPlayers)) Then
 		LogToFile("Player Count/Minimum Threshold: " & $playerCount & "/" & $MinimumPlayers)
 		LogToFile("Attempting to join server.")
 		JoinServer($ServerAddress)
 	EndIf
 
-	if( WinExists($WindowName) And ($playerCount > $MaximumPlayers)) Then
+	if( WinExists($BFWindowName) And ($playerCount > $MaximumPlayers)) Then
 		LogToFile("Player Count/Maximum Threshold: " & $playerCount & "/" & $MaximumPlayers)
 		LogToFile("Attempting to KickSelf()")
 	    KickSelf()
 	EndIf
 
-	if(WinExists($WindowName)) Then
+	if(WinExists($BFWindowName)) Then
 		sleep($SleepWhenSeeding * 60 * 1000)
 	Else
 		sleep($SleepWhenNotSeeding * 60 * 1000)
@@ -178,7 +178,7 @@ Func JoinServer($server_page)
 	OnAutoItExitRegister("QuitIEInstance")
 	$ie.document.parentwindow.execScript('document.getElementsByClassName("btn btn-primary btn-large large arrow")[0].click()')
 
-	WinWaitActive($WindowName, "",5*60)
+	WinWaitActive($BFWindowName, "",5*60)
 	sleep(30000)
 
 	Send("!{TAB}")
@@ -201,17 +201,17 @@ EndFunc
 
 Func CloseWindow()
 	LogToFile("CloseWindow()")
-	$winClose = WinClose($WindowName)
+	$winClose = WinClose($BFWindowName)
 	If $winClose == 0 Then LogToFile("Battlefield 4 window not found.")
 
-	$winClosed = WinWaitClose($WindowName, "", 15)
+	$winClosed = WinWaitClose($BFWindowName, "", 15)
 	If $winClosed ==  1 Then
-		LogToFile($WindowName & " window closed succesfully.")
+		LogToFile($BFWindowName & " window closed succesfully.")
 		Return
 	EndIf
 
 	LogToFile("Window not closed gracefully. Attempting to kill it.")
-	WinKill($WindowName)
+	WinKill($BFWindowName)
 EndFunc
 
 Func MyIEError()
