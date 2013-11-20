@@ -26,6 +26,7 @@ Settings:
 ServerAddress - set the address of the server to monitor/seed
 MinPlayers - auto-seeding will occur if player count is below this threshold
 MaxPlayers - BF4 will exit if player count is above this threshold
+Username - set to your Battlelog username
 SleepWhenNotSeeding - Explained above
 SleepWhenSeeding - ExplainedAbove
 PlayerCountRetry - The number of retries the seeder will attempt to get the player count before quitting. Set to -1 to retry indefinitely.

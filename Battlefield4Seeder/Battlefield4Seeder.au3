@@ -1,7 +1,3 @@
-#Region ;**** Directives created by AutoIt3Wrapper_GUI ****
-#AutoIt3Wrapper_Outfile=C:\Users\Brad\Documents\Dev\PureBattlefield\working\temp\Battlefield4Seeder.exe
-#AutoIt3Wrapper_UseUpx=n
-#EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -76,8 +72,9 @@ WEnd
 
 ; Get Settings from the ini file
 Func GetSetting($settingName, $required, $notFoundMessage = "", $default = "")
-	$setting = IniRead($Settingsini, "All", $settingName, $default)
+	$setting = IniRead($Settingsini, "All", $settingName, "")
 	if $setting == "" Then
+		IniWrite($Settingsini, "All", $settingName, $default)
 		If $required == true Then
 			If $notFoundMessage == "" Then $notFoundMessage = $settingName & " not found in .ini file. Exiting."
 			MsgBox(1, $ProgName, $notFoundMessage)
