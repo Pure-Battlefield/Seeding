@@ -38,8 +38,8 @@ If True Then ; Initialization
 	_IEErrorHandlerRegister("MyIEError") ; Register Global IE Error Handler
 	_IEErrorNotify(True) ; Notify IE Errors via the console
 	opt("WinTitleMatchMode",4) ; Set the Window TitleMatchMode to use regular expressions
-
-	CheckUsername($username) ; Check the Username at the start so the user knows right away if they're logged in correctly
+	StartHangProtectionTimer()
+	;CheckUsername($username) ; Check the Username at the start so the user knows right away if they're logged in correctly
 EndIf
 
 
@@ -50,6 +50,7 @@ while 1
 	$playerCount = AttemptGetPlayerCount($ServerAddress)
 
 	if( not( WinExists($BFWindowName)) And ($playerCount < $MinimumPlayers)) Then
+		CheckUsername($Username)
 		LogAll("Player Count/Minimum Threshold: " & $playerCount & "/" & $MinimumPlayers)
 		LogAll("Attempting to join server.")
 		JoinServer($ServerAddress)
@@ -62,12 +63,14 @@ while 1
 	EndIf
 
 	if(WinExists($BFWindowName)) Then
+		LogAll("Seeding.  Sleeping for " & $SleepWhenSeeding & " minutes.")
 		sleep($SleepWhenSeeding * 60 * 1000)
 	Else
+		LogAll("Not seeding.  Sleeping for " & $SleepWhenNotSeeding & " minutes.")
 		sleep($SleepWhenNotSeeding * 60 * 1000)
 	EndIf
 
-
+	HangProtection()
 WEnd
 
 ; Get Settings from the ini file
@@ -104,10 +107,11 @@ Func AttemptGetPlayerCount($server_page)
 
 	if($player_count = -1) Then
 		LogAll("Could not parse player count. Server may be down.")
-		MsgBox(0, $Progname, "Could not parse player count. Server may be down.")
+		MsgBox(0, $ProgName, "Could not parse player count. Server may be down.")
 		Exit
 	EndIf
 
+	HangProtection()
 	;LogAll("PlayerCount attempt successful: " & $player_count)
 	return $player_count
 EndFunc
@@ -117,14 +121,18 @@ Func GetPlayerCount($server_page)
 	;LogAll("GetPlayerCount(" & $server_page & ")")
 	$response =  FetchPage($server_page)
 
-	$slots_loc = StringInStr($response, '"slots":{')
-	$slots = StringMid($response, $slots_loc)
+	$matches = StringRegExp($response, '"slots".*?"2":{"current":(.*?),', 1)
+	If @error == 1 Then
+		LogAll("No player count found.")
+		$player_count = -1
+		return $player_count
+	EndIf
 
-	$2loc= StringInStr($slots, '"2"')
-	$playercount_loc = $2loc+15
-	$player_count = StringMid($slots, $playercount_loc, 2)
+	$player_count = $matches[0]
 
-	if(not StringIsDigit($player_count)) Then $player_count = StringMid($slots, $playercount_loc, 1)
+	if(not StringIsDigit($player_count)) Then
+		LogAll("Invalid player count: " & $player_count)
+	EndIf
 	if $DisplayPlayerCount == "true" Then TrayTip($ProgName,"Player count: "& $player_count , 10)
 
 	if(not StringIsDigit($player_count)) Then
@@ -138,16 +146,24 @@ EndFunc
 ; Checks that the expected user is logged in
 Func CheckUsername($username)
 	;LogAll("CheckUsername(" & $username & ")")
-	$response = FetchPage("http://battlelog.battlefield.com/bf4/")
+	$server_page = "http://battlelog.battlefield.com/bf4/"
+	$response = FetchPage($server_page)
+	;LogToFile($response)
+	$matches = StringRegExp($response, 'class="username"\W*href="/bf4/user/(.*?)/', 1)
 
-	$nameloc = StringInStr($response, 'class="username" href="/bf4/user/')
-	$name_with_junk = StringMid($response, $nameloc+33, 70)
-	$name_split = StringSplit($name_with_junk,"/", 2)
+	If @error == 1 Then
+		MsgBox(1, $ProgName, "Cannot find logged in user. Please log in and try again.")
+		LogAll("No logged-in account found.")
+		Exit
+	EndIf
 
-	If $name_split[0] <> $username Then
-	  MsgBox(1,$ProgName, "Incorrect account. Please log in with the correct account and try again")
+	$loggedInUser = $matches[0]
+	LogAll("$loggedInUser: " & $loggedInUser)
 
-	  Exit
+	If $loggedInUser <> $username Then
+		MsgBox(1,$ProgName, "Incorrect account. Please log in with the correct account and try again")
+		LogAll("Incorrect account (Required/Actual): " & $username & "/" & $loggedInUser)
+		Exit
 	EndIf
 EndFunc
 
@@ -216,6 +232,7 @@ Func HangProtection()
 	If $EnableGameHangProtection == "true" Then
 		If TimerDiff($HangProtectionTimer) >= $HangProtectionTimeLimit Then
 			LogAll("Hang protection invoked.")
+			MsgBox(0, $ProgName, "Hang prevention invoked. BF will now be closed and will restart automatically if seeding is needed.", 10)
 			CloseWindow()
 		EndIf
 	EndIf
