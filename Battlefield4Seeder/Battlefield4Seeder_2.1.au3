@@ -1,4 +1,4 @@
-; Battlefield4Seeder.au3 v2.0
+; Battlefield4Seeder.au3 v2.1
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -141,7 +141,7 @@ Func GetPlayerCount($server_page)
 	EndIf
 
 	;LogAll("Player count: " & $player_count)
-	return $player_count
+	return Number($player_count)
 EndFunc
 
 ; Checks that the expected user is logged in
