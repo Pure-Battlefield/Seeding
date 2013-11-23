@@ -1,0 +1,8 @@
+v2.1
+- fixed bug where seeding would not occur when player count was >= 2 (https://trello.com/c/NNVxseVV/)
+v2.0
+- improve handling of game crashes (https://trello.com/c/dEYIylGg/)
+- improved protection for game hangs by forcing BF4 to be restarted every half hour (https://trello.com/c/PqEd9MKz/)
+- added feature to allow for multiple retries for finding player count before giving up (https://trello.com/c/moHdCfmJ/)
+- fixed bug where many IE instances would be opened, eventually consuming all memory (https://trello.com/c/N0X3INV5/)
+- fix bug wher incorrect browser is spawned (https://trello.com/c/6TMglsB3/)
