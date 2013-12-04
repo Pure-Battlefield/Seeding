@@ -1,4 +1,4 @@
-; Battlefield4Seeder.au3 v2.1
+; BattlefieldSeeder.au3 v2.2
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -6,10 +6,10 @@
 
 If True Then ; Setup
 	; Global Constants
-	$Settingsini = "BF4SeederSettings.ini"
-	$ProgName = "Battlefield4 Auto-Seeder"
-	$LogFileName = "BF4SeederLog.log"
-	$BFWindowName = "[REGEXPTITLE:^Battlefield 4.$]"
+	$Settingsini = "BFSeederSettings.ini"
+	$ProgName = "Battlefield Auto-Seeder"
+	$LogFileName = "BFSeederLog.log"
+	$BFWindowName = "[REGEXPTITLE:^Battlefield 3.$]"
 	$HangProtectionTimeLimit = 30 * 60 * 1000  ;30 minutes
 
 	; Global Variables
@@ -17,7 +17,7 @@ If True Then ; Setup
 	Global $HangProtectionTimer
 
 	; Config
-	FileInstall("BF4SeederSettings.ini", ".\")
+	FileInstall("BFSeederSettings.ini", ".\")
 
 	; Required Config Settings
 	$ServerAddress = GetSetting("ServerAddress", true)
@@ -122,7 +122,7 @@ Func GetPlayerCount($server_page)
 	;LogAll("GetPlayerCount(" & $server_page & ")")
 	$response =  FetchPage($server_page)
 
-	$matches = StringRegExp($response, '"slots".*?"2":{"current":(.*?),', 1)
+	$matches = StringRegExp($response, '<td id="server-info-players">(\d+) / \d+</td>', 1)
 	If @error == 1 Then
 		LogAll("No player count found.")
 		$player_count = -1
@@ -147,10 +147,10 @@ EndFunc
 ; Checks that the expected user is logged in
 Func CheckUsername($username)
 	;LogAll("CheckUsername(" & $username & ")")
-	$server_page = "http://battlelog.battlefield.com/bf4/"
+	$server_page = "http://battlelog.battlefield.com/bf3/"
 	$response = FetchPage($server_page)
 	;LogToFile($response)
-	$matches = StringRegExp($response, 'class="username"\W*href="/bf4/user/(.*?)/', 1)
+	$matches = StringRegExp($response, 'class="username"\W*href="/bf3/user/(.*?)/', 1)
 
 	If @error == 1 Then
 		MsgBox(1, $ProgName, "Cannot find logged in user. Please log in and try again.")
@@ -195,7 +195,7 @@ Func JoinServer($server_page)
 	$ie = _IECreate($server_page)
 	if $ie == 0 Then LogAll("IE instance not created: " & $server_page)
 	OnAutoItExitRegister("QuitIEInstance")
-	$ie.document.parentwindow.execScript('document.getElementsByClassName("btn btn-primary btn-large large arrow")[0].click()')
+	$ie.document.parentwindow.execScript('document.getElementsByClassName("base-button-arrow-almost-gigantic legacy-server-browser-info-button")[0].click()')
 
 	StartHangProtectionTimer() ; Always assume the window was created successfully for Hang Timer
 
@@ -235,6 +235,7 @@ Func HangProtection()
 			LogAll("Hang protection invoked.")
 			MsgBox(0, $ProgName, "Hang prevention invoked. BF will now be closed and will restart automatically if seeding is needed.", 10)
 			CloseWindow()
+			StartHangProtectionTimer() ; Reset the hang protection timer
 		EndIf
 	EndIf
 EndFunc
