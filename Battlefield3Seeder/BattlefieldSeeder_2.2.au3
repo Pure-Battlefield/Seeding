@@ -39,7 +39,6 @@ If True Then ; Initialization
 	_IEErrorHandlerRegister("MyIEError") ; Register Global IE Error Handler
 	_IEErrorNotify(True) ; Notify IE Errors via the console
 	opt("WinTitleMatchMode",4) ; Set the Window TitleMatchMode to use regular expressions
-	StartHangProtectionTimer()
 	;CheckUsername($username) ; Check the Username at the start so the user knows right away if they're logged in correctly
 EndIf
 
@@ -112,7 +111,6 @@ Func AttemptGetPlayerCount($server_page)
 		Exit
 	EndIf
 
-	HangProtection()
 	;LogAll("PlayerCount attempt successful: " & $player_count)
 	return $player_count
 EndFunc
