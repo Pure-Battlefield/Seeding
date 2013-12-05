@@ -263,8 +263,34 @@ EndFunc
 
 ; Callback for IEError
 Func MyIEError()
-	LogAll("MyIEError()")
+	LogAll("MyIEError():")
 	MsgBox(0,$ProgName,"Internet Explorer-related error. Are you logged in to Battlelog? Script closing...")
+
+	; Important: the error object variable MUST be named $oIEErrorHandler
+    Local $ErrorScriptline = $oIEErrorHandler.scriptline
+    Local $ErrorNumber = $oIEErrorHandler.number
+    Local $ErrorNumberHex = Hex($oIEErrorHandler.number, 8)
+    Local $ErrorDescription = StringStripWS($oIEErrorHandler.description, 2)
+    Local $ErrorWinDescription = StringStripWS($oIEErrorHandler.WinDescription, 2)
+    Local $ErrorSource = $oIEErrorHandler.Source
+    Local $ErrorHelpFile = $oIEErrorHandler.HelpFile
+    Local $ErrorHelpContext = $oIEErrorHandler.HelpContext
+    Local $ErrorLastDllError = $oIEErrorHandler.LastDllError
+    Local $ErrorOutput = ""
+    $ErrorOutput &= "--> COM Error Encountered in " & @ScriptName & @CR
+    $ErrorOutput &= "----> $ErrorScriptline = " & $ErrorScriptline & @CR
+    $ErrorOutput &= "----> $ErrorNumberHex = " & $ErrorNumberHex & @CR
+    $ErrorOutput &= "----> $ErrorNumber = " & $ErrorNumber & @CR
+    $ErrorOutput &= "----> $ErrorWinDescription = " & $ErrorWinDescription & @CR
+    $ErrorOutput &= "----> $ErrorDescription = " & $ErrorDescription & @CR
+    $ErrorOutput &= "----> $ErrorSource = " & $ErrorSource & @CR
+    $ErrorOutput &= "----> $ErrorHelpFile = " & $ErrorHelpFile & @CR
+    $ErrorOutput &= "----> $ErrorHelpContext = " & $ErrorHelpContext & @CR
+    $ErrorOutput &= "----> $ErrorLastDllError = " & $ErrorLastDllError
+    LogAll($ErrorOutput)
+    ;SetError(1)
+    ;Return
+
 	exit
 EndFunc
 
