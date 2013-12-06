@@ -13,7 +13,7 @@ If True Then ; Setup
 	$HangProtectionTimeLimit = 30 * 60 * 1000  ;30 minutes
 
 	; Global Variables
-	Global $ie
+	Global $ie = 0
 	Global $HangProtectionTimer
 
 	; Config
@@ -117,8 +117,9 @@ EndFunc
 
 ; Parse the response for the player count
 Func GetPlayerCount($server_page)
-	;LogAll("GetPlayerCount(" & $server_page & ")")
-	$response =  FetchPage($server_page)
+	LogAll("GetPlayerCount(" & $server_page & ")")
+	;$response =  FetchPage($server_page)
+	$response = LoadInIE($server_page)
 
 	$matches = StringRegExp($response, '"slots".*?"2":{"current":(.*?),', 1)
 	If @error == 1 Then
@@ -146,7 +147,8 @@ EndFunc
 Func CheckUsername($username)
 	;LogAll("CheckUsername(" & $username & ")")
 	$server_page = "http://battlelog.battlefield.com/bf4/"
-	$response = FetchPage($server_page)
+	;$response = FetchPage($server_page)
+	$response = LoadInIE($server_page)
 	;LogToFile($response)
 	$matches = StringRegExp($response, 'class="username"\W*href="/bf4/user/(.*?)/', 1)
 
@@ -294,11 +296,45 @@ Func MyIEError()
 	exit
 EndFunc
 
+; Opens a global IE instance
+Func OpenIEInstance($attemptCount = 0)
+	LogAll("OpenIEInstance(), attempts: " & $attemptCount)
+	$ie = _IECreate("about:blank", 0, 0)
+	if($ie == 0) Then
+		If($attemptCount > 4) Then
+			LogAll("Cannot create IE Instance. Script closing...")
+			MsgBox(0, $ProgName, "Cannot open IE. Script closing...")
+			Exit
+		EndIf
+
+		LogAll("IE instance doesn't exist. Trying again.")
+		OpenIEInstance()
+		sleep(5000)
+		OpenIEInstance($attemptCount + 1)
+	EndIf
+	OnAutoItExitRegister("QuitIEInstance")
+EndFunc
+
+; Fetches a page in IE
+Func LoadInIE($server_page)
+	LogAll("Fetch a page using IE")
+	if($ie == 0) Then
+		LogAll("IE instance doesn't exist. Trying again.")
+		OpenIEInstance()
+		sleep(5000)
+		LoadInIE($server_page)
+	EndIf
+	_IENavigate($ie, $server_page)
+	LogAll("Navigated to " & $server_page)
+	Return _IEBodyReadHTML($ie)
+EndFunc
+
 ; Closes IE Instance
 Func QuitIEInstance()
 	LogAll("QuitIEInstance()")
 	$ieQuit = _IEQuit($ie)
 	if($ieQuit == 0) Then LogAll("IEQuit fail: " & @CRLF & @error)
+	OnAutoItExitUnRegister("QuitIEInstance")
 EndFunc
 
 ; Check to make sure there is only 1 instance of the Seeder running
