@@ -66,6 +66,9 @@ while 1
 	    KickSelf()
 	EndIf
 
+	; Perform Idle Avoidance before sleeping
+	IdleAvoidance()
+
 	; Sleep for a period without checking
 	if(WinExists($BFWindowName)) Then
 		LogAll("Seeding.  Sleeping for " & $SleepWhenSeeding & " minutes.")
@@ -78,6 +81,25 @@ while 1
 	; If the game has been running for 30 mins, kill it so that it will restart
 	HangProtection()
 WEnd
+
+Func IdleAvoidance($attemptCount = 0)
+	LogAll("IdleAvoidance()")
+	if(not(WinExists($BFWindowName))) Then Return
+
+	LogAll("BF Window exists. Attempting idle avoidance.")
+	$activeWindow = WinActivate($BFWindowName)
+	if($activeWindow == 0) Then
+		if($attemptCount > 4) Then
+			LogAll("Cannot set BF Window to active. Giving up on idle avoidance.")
+			Return
+		EndIf
+		LogAll("BF Window not active. Retrying.")
+		Sleep(5000)
+		IdleAvoidance($attemptCount + 1)
+		Return
+	EndIf
+	Send("j/help{ENTER}")
+EndFunc
 
 ; Get Settings from the ini file
 Func GetSetting($settingName, $required, $notFoundMessage = "", $default = "")
@@ -314,9 +336,9 @@ Func OpenIEInstance($attemptCount = 0)
 		EndIf
 
 		LogAll("IE instance doesn't exist. Trying again.")
-		OpenIEInstance()
 		sleep(5000)
 		OpenIEInstance($attemptCount + 1)
+		Return
 	EndIf
 	OnAutoItExitRegister("QuitIEInstance")
 EndFunc
@@ -329,6 +351,7 @@ Func LoadInIE($server_page)
 		OpenIEInstance()
 		sleep(5000)
 		LoadInIE($server_page)
+		Return
 	EndIf
 	_IENavigate($ie, $server_page)
 	LogAll("Navigated to " & $server_page)
