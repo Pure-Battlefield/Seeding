@@ -1,3 +1,6 @@
+v2.2
+- fixed bug with hang protection timer timing out instaneously after first timeout
+- fixed IE related bugs where current user couldn't be detected
 v2.1
 - fixed bug where seeding would not occur when player count was >= 2 (https://trello.com/c/NNVxseVV/)
 v2.0

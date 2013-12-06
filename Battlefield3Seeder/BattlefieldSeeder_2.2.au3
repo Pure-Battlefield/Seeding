@@ -1,4 +1,4 @@
-; BattlefieldSeeder.au3 v2.1
+; BattlefieldSeeder.au3 v2.2
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -39,7 +39,6 @@ If True Then ; Initialization
 	_IEErrorHandlerRegister("MyIEError") ; Register Global IE Error Handler
 	_IEErrorNotify(True) ; Notify IE Errors via the console
 	opt("WinTitleMatchMode",4) ; Set the Window TitleMatchMode to use regular expressions
-	StartHangProtectionTimer()
 	;CheckUsername($username) ; Check the Username at the start so the user knows right away if they're logged in correctly
 EndIf
 
@@ -112,7 +111,6 @@ Func AttemptGetPlayerCount($server_page)
 		Exit
 	EndIf
 
-	HangProtection()
 	;LogAll("PlayerCount attempt successful: " & $player_count)
 	return $player_count
 EndFunc
@@ -235,6 +233,7 @@ Func HangProtection()
 			LogAll("Hang protection invoked.")
 			MsgBox(0, $ProgName, "Hang prevention invoked. BF will now be closed and will restart automatically if seeding is needed.", 10)
 			CloseWindow()
+			StartHangProtectionTimer() ; Reset the hang protection timer
 		EndIf
 	EndIf
 EndFunc
@@ -264,8 +263,34 @@ EndFunc
 
 ; Callback for IEError
 Func MyIEError()
-	LogAll("MyIEError()")
+	LogAll("MyIEError():")
 	MsgBox(0,$ProgName,"Internet Explorer-related error. Are you logged in to Battlelog? Script closing...")
+
+	; Important: the error object variable MUST be named $oIEErrorHandler
+    Local $ErrorScriptline = $oIEErrorHandler.scriptline
+    Local $ErrorNumber = $oIEErrorHandler.number
+    Local $ErrorNumberHex = Hex($oIEErrorHandler.number, 8)
+    Local $ErrorDescription = StringStripWS($oIEErrorHandler.description, 2)
+    Local $ErrorWinDescription = StringStripWS($oIEErrorHandler.WinDescription, 2)
+    Local $ErrorSource = $oIEErrorHandler.Source
+    Local $ErrorHelpFile = $oIEErrorHandler.HelpFile
+    Local $ErrorHelpContext = $oIEErrorHandler.HelpContext
+    Local $ErrorLastDllError = $oIEErrorHandler.LastDllError
+    Local $ErrorOutput = ""
+    $ErrorOutput &= "--> COM Error Encountered in " & @ScriptName & @CR
+    $ErrorOutput &= "----> $ErrorScriptline = " & $ErrorScriptline & @CR
+    $ErrorOutput &= "----> $ErrorNumberHex = " & $ErrorNumberHex & @CR
+    $ErrorOutput &= "----> $ErrorNumber = " & $ErrorNumber & @CR
+    $ErrorOutput &= "----> $ErrorWinDescription = " & $ErrorWinDescription & @CR
+    $ErrorOutput &= "----> $ErrorDescription = " & $ErrorDescription & @CR
+    $ErrorOutput &= "----> $ErrorSource = " & $ErrorSource & @CR
+    $ErrorOutput &= "----> $ErrorHelpFile = " & $ErrorHelpFile & @CR
+    $ErrorOutput &= "----> $ErrorHelpContext = " & $ErrorHelpContext & @CR
+    $ErrorOutput &= "----> $ErrorLastDllError = " & $ErrorLastDllError
+    LogAll($ErrorOutput)
+    ;SetError(1)
+    ;Return
+
 	exit
 EndFunc
 

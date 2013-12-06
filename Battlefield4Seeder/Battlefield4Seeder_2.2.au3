@@ -1,4 +1,4 @@
-; Battlefield4Seeder.au3 v2.1
+; Battlefield4Seeder.au3 v2.2
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -13,7 +13,7 @@ If True Then ; Setup
 	$HangProtectionTimeLimit = 30 * 60 * 1000  ;30 minutes
 
 	; Global Variables
-	Global $ie
+	Global $ie = 0
 	Global $HangProtectionTimer
 
 	; Config
@@ -39,7 +39,6 @@ If True Then ; Initialization
 	_IEErrorHandlerRegister("MyIEError") ; Register Global IE Error Handler
 	_IEErrorNotify(True) ; Notify IE Errors via the console
 	opt("WinTitleMatchMode",4) ; Set the Window TitleMatchMode to use regular expressions
-	StartHangProtectionTimer()
 	;CheckUsername($username) ; Check the Username at the start so the user knows right away if they're logged in correctly
 EndIf
 
@@ -112,15 +111,15 @@ Func AttemptGetPlayerCount($server_page)
 		Exit
 	EndIf
 
-	HangProtection()
 	;LogAll("PlayerCount attempt successful: " & $player_count)
 	return $player_count
 EndFunc
 
 ; Parse the response for the player count
 Func GetPlayerCount($server_page)
-	;LogAll("GetPlayerCount(" & $server_page & ")")
-	$response =  FetchPage($server_page)
+	LogAll("GetPlayerCount(" & $server_page & ")")
+	;$response =  FetchPage($server_page)
+	$response = LoadInIE($server_page)
 
 	$matches = StringRegExp($response, '"slots".*?"2":{"current":(.*?),', 1)
 	If @error == 1 Then
@@ -148,7 +147,8 @@ EndFunc
 Func CheckUsername($username)
 	;LogAll("CheckUsername(" & $username & ")")
 	$server_page = "http://battlelog.battlefield.com/bf4/"
-	$response = FetchPage($server_page)
+	;$response = FetchPage($server_page)
+	$response = LoadInIE($server_page)
 	;LogToFile($response)
 	$matches = StringRegExp($response, 'class="username"\W*href="/bf4/user/(.*?)/', 1)
 
@@ -192,9 +192,11 @@ Func JoinServer($server_page)
 		Exit
 	EndIf
 
-	$ie = _IECreate($server_page)
-	if $ie == 0 Then LogAll("IE instance not created: " & $server_page)
-	OnAutoItExitRegister("QuitIEInstance")
+	$result = LoadInIE($server_page)
+	if($result == 0) Then
+		LogAll("Could not load server page: " & $server_page)
+		Return
+	EndIf
 	$ie.document.parentwindow.execScript('document.getElementsByClassName("btn btn-primary btn-large large arrow")[0].click()')
 
 	StartHangProtectionTimer() ; Always assume the window was created successfully for Hang Timer
@@ -209,9 +211,6 @@ Func JoinServer($server_page)
 	sleep(10000)
 	Send("!{TAB}")
 	sleep(10000)
-	$ieQuit = _IEQuit($ie)
-	if($ieQuit == 0) Then LogAll("IEQuit fail: " & @CRLF & @error)
-	OnAutoItExitUnRegister("QuitIEInstance")
 
 	WinSetState($bfWindow, "", @SW_MINIMIZE)
 EndFunc
@@ -235,6 +234,7 @@ Func HangProtection()
 			LogAll("Hang protection invoked.")
 			MsgBox(0, $ProgName, "Hang prevention invoked. BF will now be closed and will restart automatically if seeding is needed.", 10)
 			CloseWindow()
+			StartHangProtectionTimer() ; Reset the hang protection timer
 		EndIf
 	EndIf
 EndFunc
@@ -266,7 +266,66 @@ EndFunc
 Func MyIEError()
 	LogAll("MyIEError()")
 	MsgBox(0,$ProgName,"Internet Explorer-related error. Are you logged in to Battlelog? Script closing...")
+
+	; Important: the error object variable MUST be named $oIEErrorHandler
+    Local $ErrorScriptline = $oIEErrorHandler.scriptline
+    Local $ErrorNumber = $oIEErrorHandler.number
+    Local $ErrorNumberHex = Hex($oIEErrorHandler.number, 8)
+    Local $ErrorDescription = StringStripWS($oIEErrorHandler.description, 2)
+    Local $ErrorWinDescription = StringStripWS($oIEErrorHandler.WinDescription, 2)
+    Local $ErrorSource = $oIEErrorHandler.Source
+    Local $ErrorHelpFile = $oIEErrorHandler.HelpFile
+    Local $ErrorHelpContext = $oIEErrorHandler.HelpContext
+    Local $ErrorLastDllError = $oIEErrorHandler.LastDllError
+    Local $ErrorOutput = ""
+    $ErrorOutput &= "--> COM Error Encountered in " & @ScriptName & @CR
+    $ErrorOutput &= "----> $ErrorScriptline = " & $ErrorScriptline & @CR
+    $ErrorOutput &= "----> $ErrorNumberHex = " & $ErrorNumberHex & @CR
+    $ErrorOutput &= "----> $ErrorNumber = " & $ErrorNumber & @CR
+    $ErrorOutput &= "----> $ErrorWinDescription = " & $ErrorWinDescription & @CR
+    $ErrorOutput &= "----> $ErrorDescription = " & $ErrorDescription & @CR
+    $ErrorOutput &= "----> $ErrorSource = " & $ErrorSource & @CR
+    $ErrorOutput &= "----> $ErrorHelpFile = " & $ErrorHelpFile & @CR
+    $ErrorOutput &= "----> $ErrorHelpContext = " & $ErrorHelpContext & @CR
+    $ErrorOutput &= "----> $ErrorLastDllError = " & $ErrorLastDllError
+    LogAll($ErrorOutput)
+    ;SetError(1)
+    ;Return
+
 	exit
+EndFunc
+
+; Opens a global IE instance
+Func OpenIEInstance($attemptCount = 0)
+	LogAll("OpenIEInstance(), attempts: " & $attemptCount)
+	$ie = _IECreate("about:blank", 0, 0)
+	if($ie == 0) Then
+		If($attemptCount > 4) Then
+			LogAll("Cannot create IE Instance. Script closing...")
+			MsgBox(0, $ProgName, "Cannot open IE. Script closing...")
+			Exit
+		EndIf
+
+		LogAll("IE instance doesn't exist. Trying again.")
+		OpenIEInstance()
+		sleep(5000)
+		OpenIEInstance($attemptCount + 1)
+	EndIf
+	OnAutoItExitRegister("QuitIEInstance")
+EndFunc
+
+; Fetches a page in IE
+Func LoadInIE($server_page)
+	LogAll("Fetch a page using IE")
+	if($ie == 0) Then
+		LogAll("IE instance doesn't exist. Trying again.")
+		OpenIEInstance()
+		sleep(5000)
+		LoadInIE($server_page)
+	EndIf
+	_IENavigate($ie, $server_page)
+	LogAll("Navigated to " & $server_page)
+	Return _IEBodyReadHTML($ie)
 EndFunc
 
 ; Closes IE Instance
@@ -274,6 +333,7 @@ Func QuitIEInstance()
 	LogAll("QuitIEInstance()")
 	$ieQuit = _IEQuit($ie)
 	if($ieQuit == 0) Then LogAll("IEQuit fail: " & @CRLF & @error)
+	OnAutoItExitUnRegister("QuitIEInstance")
 EndFunc
 
 ; Check to make sure there is only 1 instance of the Seeder running
