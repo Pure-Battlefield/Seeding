@@ -192,9 +192,11 @@ Func JoinServer($server_page)
 		Exit
 	EndIf
 
-	$ie = _IECreate($server_page)
-	if $ie == 0 Then LogAll("IE instance not created: " & $server_page)
-	OnAutoItExitRegister("QuitIEInstance")
+	$result = LoadInIE($server_page)
+	if($result == 0) Then
+		LogAll("Could not load server page: " & $server_page)
+		Return
+	EndIf
 	$ie.document.parentwindow.execScript('document.getElementsByClassName("btn btn-primary btn-large large arrow")[0].click()')
 
 	StartHangProtectionTimer() ; Always assume the window was created successfully for Hang Timer
@@ -209,9 +211,6 @@ Func JoinServer($server_page)
 	sleep(10000)
 	Send("!{TAB}")
 	sleep(10000)
-	$ieQuit = _IEQuit($ie)
-	if($ieQuit == 0) Then LogAll("IEQuit fail: " & @CRLF & @error)
-	OnAutoItExitUnRegister("QuitIEInstance")
 
 	WinSetState($bfWindow, "", @SW_MINIMIZE)
 EndFunc
