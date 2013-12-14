@@ -27,10 +27,10 @@ If True Then ; Setup
 	$Username = GetSetting("Username", true)
 
 	; Defaulted/Optional Config Settings
-	$SleepWhenNotSeeding = GetSetting("SleepWhenNotSeeding", false, "", 1)
-	$SleepWhenSeeding = GetSetting("SleepWhenSeeding", false, "", 1)
+	$SleepWhenNotSeeding = GetSetting("SleepWhenNotSeeding", false, "", .2)
+	$SleepWhenSeeding = GetSetting("SleepWhenSeeding", false, "", .2)
 	$DisplayPlayerCount = GetSetting("DisplayPlayerCount", false, "", "true")
-	$PlayerCountRetry = GetSetting("PlayerCountRetry", false, "", 5)
+	$PlayerCountRetry = GetSetting("PlayerCountRetry", false, "", 3000)
 	$EnableLogging = GetSetting("EnableLogging", false, "", "false")
 	$EnableGameHangProtection = GetSetting("EnableGameHangProtection", false, "", "true")
 EndIf
