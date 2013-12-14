@@ -47,8 +47,11 @@ EndIf
 LogAll("---------------------------")
 LogAll("Battlefield4 Seeder started")
 while 1
+	; Attempt to get the player count
+	;	- this will retry until PlayerCountRetry is reached or it successfully gets the player count
 	$playerCount = AttemptGetPlayerCount($ServerAddress)
 
+	; If the BF window doesn't exist and playerCount is under the min, start seeding
 	if( not( WinExists($BFWindowName)) And ($playerCount < $MinimumPlayers)) Then
 		CheckUsername($Username)
 		LogAll("Player Count/Minimum Threshold: " & $playerCount & "/" & $MinimumPlayers)
@@ -56,12 +59,14 @@ while 1
 		JoinServer($ServerAddress)
 	EndIf
 
+	; If the BF window exists and playerCount is over the maximum, kick self
 	if( WinExists($BFWindowName) And ($playerCount > $MaximumPlayers)) Then
 		LogAll("Player Count/Maximum Threshold: " & $playerCount & "/" & $MaximumPlayers)
 		LogAll("Attempting to KickSelf()")
 	    KickSelf()
 	EndIf
 
+	; Sleep for a period without checking
 	if(WinExists($BFWindowName)) Then
 		LogAll("Seeding.  Sleeping for " & $SleepWhenSeeding & " minutes.")
 		sleep($SleepWhenSeeding * 60 * 1000)
@@ -70,6 +75,7 @@ while 1
 		sleep($SleepWhenNotSeeding * 60 * 1000)
 	EndIf
 
+	; If the game has been running for 30 mins, kill it so that it will restart
 	HangProtection()
 WEnd
 
@@ -204,6 +210,7 @@ Func JoinServer($server_page)
 	$bfWindow = WinWaitActive($BFWindowName, "",5*60)
 	If $bfWindow == 0 Then
 		If WinExists($BFWindowName) == 0 Then
+			; This will happen if the account does not have required DLC
 			LogAll("Battlefield window does not exist. Something went wrong.")
 		EndIf
 	EndIf
