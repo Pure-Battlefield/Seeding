@@ -1,4 +1,4 @@
-; Battlefield4Seeder.au3 v2.3
+; BattlefieldSeeder.au3 v2.4
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -6,10 +6,10 @@
 
 If True Then ; Setup
 	; Global Constants
-	$Settingsini = "BF4SeederSettings.ini"
-	$ProgName = "Battlefield4 Auto-Seeder"
-	$LogFileName = "BF4SeederLog.log"
-	$BFWindowName = "[REGEXPTITLE:^Battlefield 4.$]"
+	$Settingsini = "BFSeederSettings.ini"
+	$ProgName = "Battlefield Auto-Seeder"
+	$LogFileName = "BFSeederLog.log"
+
 	$HangProtectionTimeLimit = 30 * 60 * 1000  ;30 minutes
 
 	; Global Variables
@@ -17,14 +17,22 @@ If True Then ; Setup
 	Global $HangProtectionTimer
 	Global $HangProtectionEnabled
 
+	; Game-Specific Settings
+	$BFWindowName = ""
+	$PlayerCountRegex = ""
+	$BattlelogMainPage = ""
+	$CheckUsernameRegex = ""
+	$JoinServerJS = ""
+
 	; Config
-	FileInstall("BF4SeederSettings.ini", ".\")
+	FileInstall("BFSeederSettings.ini", ".\")
 
 	; Required Config Settings
 	$ServerAddress = GetSetting("ServerAddress", true)
 	$MinimumPlayers = GetSetting("MinPlayers", true)
 	$MaximumPlayers = GetSetting("MaxPlayers", true)
 	$Username = GetSetting("Username", true)
+	$BattlefieldGame = GetSetting("BattlefieldGame", true)
 
 	; Defaulted/Optional Config Settings
 	$SleepWhenNotSeeding = GetSetting("SleepWhenNotSeeding", false, "", .2)
@@ -41,12 +49,13 @@ If True Then ; Initialization
 	_IEErrorNotify(True) ; Notify IE Errors via the console
 	opt("WinTitleMatchMode",4) ; Set the Window TitleMatchMode to use regular expressions
 	;CheckUsername($username) ; Check the Username at the start so the user knows right away if they're logged in correctly
+	GameSpecificSetup() ; Setup settings specific to each game
 EndIf
 
 
 ;~~~~~~~~~~~~~~~~~~~~~ Main ~~~~~~~~~~~~~~~~~~~~~~~~
 LogAll("---------------------------")
-LogAll("Battlefield4 Seeder started")
+LogAll("Battlefield Seeder started")
 while 1
 	; Attempt to get the player count
 	;	- this will retry until PlayerCountRetry is reached or it successfully gets the player count
@@ -83,20 +92,26 @@ while 1
 	HangProtection()
 WEnd
 
-Func IdleAvoidance()
-	LogAll("IdleAvoidance()")
-	if(not(WinExists($BFWindowName))) Then Return
 
-	LogAll("BF Window exists. Attempting idle avoidance.")
+; Setup specific settings for BF3/BF4
+Func GameSpecificSetup
+	$ProgName = $ProgName & " - " & $BattlefieldGame
 
-	$Full = WinGetTitle ($BFWindowName) ; Get The Full Title..
-	$HWnD = WinGetHandle ($Full) ; Get The Handle
-	$iButton = 'Left' ; Button The Mouse Will Click I.E. "Left Or Right"
-	$iClicks = '1' ; The Number Of Times To Click
-	$iX = '0' ; The "X" Pos For The Mouse To Click
-	$iY = '0' ; The "Y" Pos For The Mouse To Click
-	If IsHWnD ($HWnD) And WinExists ($Full) <> '0' Then ; Win Check
-		ControlClick ($HWnD, '','', $iButton, $iClicks, $iX, $iY) ; Clicking The Window While Its Minmized
+	If($BattlefieldGame = "bf4") Then
+		$BFWindowName = "[REGEXPTITLE:^Battlefield 4.$]"
+		$PlayerCountRegex = '"slots".*?"2":{"current":(.*?),'
+		$BattlelogMainPage = "http://battlelog.battlefield.com/bf4/"
+		$CheckUsernameRegex = 'class="username"\W*href="/bf4/user/(.*?)/'
+		$JoinServerJS = 'document.getElementsByClassName("btn btn-primary btn-large large arrow")[0].click()'
+	ElseIf($BattlefieldGame = "bf3") Then
+		$BFWindowName = "[REGEXPTITLE:^Battlefield 3.$]"
+		$PlayerCountRegex = '<td id="server-info-players">(\d+) / \d+</td>'
+		$BattlelogMainPage = "http://battlelog.battlefield.com/bf3/"
+		$CheckUsernameRegex = 'class="username"\W*href="/bf3/user/(.*?)/'
+		$JoinServerJS = 'document.getElementsByClassName("base-button-arrow-almost-gigantic legacy-server-browser-info-button")[0].click()'
+	Else
+		MsgBox(0, $ProgName, "Invalid BattlefieldGame setting. Must be either BF3 or BF4.")
+		Exit
 	EndIf
 EndFunc
 
@@ -148,7 +163,7 @@ Func GetPlayerCount($server_page)
 	;$response =  FetchPage($server_page)
 	$response = LoadInIE($server_page)
 
-	$matches = StringRegExp($response, '"slots".*?"2":{"current":(.*?),', 1)
+	$matches = StringRegExp($response, $PlayerCountRegex, 1)
 	If @error == 1 Then
 		LogAll("No player count found.")
 		$player_count = -1
@@ -173,11 +188,11 @@ EndFunc
 ; Checks that the expected user is logged in
 Func CheckUsername($username)
 	;LogAll("CheckUsername(" & $username & ")")
-	$server_page = "http://battlelog.battlefield.com/bf4/"
+	$server_page = $BattlelogMainPage
 	;$response = FetchPage($server_page)
 	$response = LoadInIE($server_page)
 	;LogToFile($response)
-	$matches = StringRegExp($response, 'class="username"\W*href="/bf4/user/(.*?)/', 1)
+	$matches = StringRegExp($response, $CheckUsernameRegex, 1)
 
 	If @error == 1 Then
 		MsgBox(1, $ProgName, "Cannot find logged in user. Please log in and try again.")
@@ -224,7 +239,7 @@ Func JoinServer($server_page)
 		LogAll("Could not load server page: " & $server_page)
 		Return
 	EndIf
-	$ie.document.parentwindow.execScript('document.getElementsByClassName("btn btn-primary btn-large large arrow")[0].click()')
+	$ie.document.parentwindow.execScript($JoinServerJS)
 
 	StartHangProtectionTimer() ; Always assume the window was created successfully for Hang Timer
 
@@ -252,7 +267,7 @@ Func KickSelf()
 		Exit
 	EndIf
 
-	CloseWindow("Server filling up so kick seeder.")
+	CloseWindow("Server filling up so kicked seeder.")
 EndFunc
 
 ; Uses a timer to terminate BF periodically to ensure that if the game hangs, it won't be indefinitely
@@ -273,12 +288,31 @@ Func StartHangProtectionTimer()
 	EndIf
 EndFunc
 
-
+; Stops the HangProtectionTimer
 Func StopHangProtectionTimer()
 	$HangProtectionEnabled = False
 EndFunc
 
-; Attempts to gracefully close BF4 window, but if it fails, it will hard kill it
+; Clicks in the top left of the window to reset the idle timer
+Func IdleAvoidance()
+	LogAll("IdleAvoidance()")
+	if(not(WinExists($BFWindowName))) Then Return
+
+	LogAll("BF Window exists. Attempting idle avoidance.")
+
+	$Full = WinGetTitle ($BFWindowName) ; Get The Full Title..
+	$HWnD = WinGetHandle ($Full) ; Get The Handle
+	$iButton = 'Left' ; Button The Mouse Will Click I.E. "Left Or Right"
+	$iClicks = '1' ; The Number Of Times To Click
+	$iX = '0' ; The "X" Pos For The Mouse To Click
+	$iY = '0' ; The "Y" Pos For The Mouse To Click
+	If IsHWnD ($HWnD) And WinExists ($Full) <> '0' Then ; Win Check
+		ControlClick ($HWnD, '','', $iButton, $iClicks, $iX, $iY) ; Clicking The Window While Its Minmized
+	EndIf
+EndFunc
+
+
+; Attempts to gracefully close BF window, but if it fails, it will hard kill it
 Func CloseWindow($reason)
 	LogAll("CloseWindow()")
 	$winClose = WinClose($BFWindowName)
