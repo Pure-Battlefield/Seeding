@@ -15,6 +15,7 @@ If True Then ; Setup
 	; Global Variables
 	Global $ie = 0
 	Global $HangProtectionTimer
+	Global $HangProtectionEnabled
 
 	; Config
 	FileInstall("BF4SeederSettings.ini", ".\")
@@ -82,23 +83,21 @@ while 1
 	HangProtection()
 WEnd
 
-Func IdleAvoidance($attemptCount = 0)
+Func IdleAvoidance()
 	LogAll("IdleAvoidance()")
 	if(not(WinExists($BFWindowName))) Then Return
 
 	LogAll("BF Window exists. Attempting idle avoidance.")
-	$activeWindow = WinActivate($BFWindowName)
-	if($activeWindow == 0) Then
-		if($attemptCount > 4) Then
-			LogAll("Cannot set BF Window to active. Giving up on idle avoidance.")
-			Return
-		EndIf
-		LogAll("BF Window not active. Retrying.")
-		Sleep(5000)
-		IdleAvoidance($attemptCount + 1)
-		Return
+
+	$Full = WinGetTitle ($BFWindowName) ; Get The Full Title..
+	$HWnD = WinGetHandle ($Full) ; Get The Handle
+	$iButton = 'Left' ; Button The Mouse Will Click I.E. "Left Or Right"
+	$iClicks = '1' ; The Number Of Times To Click
+	$iX = '0' ; The "X" Pos For The Mouse To Click
+	$iY = '0' ; The "Y" Pos For The Mouse To Click
+	If IsHWnD ($HWnD) And WinExists ($Full) <> '0' Then ; Win Check
+		ControlClick ($HWnD, '','', $iButton, $iClicks, $iX, $iY) ; Clicking The Window While Its Minmized
 	EndIf
-	Send("j/help{ENTER}")
 EndFunc
 
 ; Get Settings from the ini file
@@ -229,13 +228,13 @@ Func JoinServer($server_page)
 
 	StartHangProtectionTimer() ; Always assume the window was created successfully for Hang Timer
 
-	$bfWindow = WinWaitActive($BFWindowName, "",5*60)
-	If $bfWindow == 0 Then
-		If WinExists($BFWindowName) == 0 Then
-			; This will happen if the account does not have required DLC
-			LogAll("Battlefield window does not exist. Something went wrong.")
-		EndIf
-	EndIf
+	;$bfWindow = WinWaitActive($BFWindowName, "",2*60) ; Wait up to 2 minutes for the window to load
+	;If $bfWindow == 0 Then
+	;	If WinExists($BFWindowName) == 0 Then
+	;		; This will happen if the account does not have required DLC
+	;		LogAll("Battlefield window does not exist. Something went wrong.")
+	;	EndIf
+	;EndIf
 
 	sleep(10000)
 	Send("!{TAB}")
@@ -253,17 +252,15 @@ Func KickSelf()
 		Exit
 	EndIf
 
-	CloseWindow()
+	CloseWindow("Server filling up so kick seeder.")
 EndFunc
 
 ; Uses a timer to terminate BF periodically to ensure that if the game hangs, it won't be indefinitely
 Func HangProtection()
-	If $EnableGameHangProtection == "true" Then
+	If $HangProtectionEnabled == True Then
 		If TimerDiff($HangProtectionTimer) >= $HangProtectionTimeLimit Then
-			LogAll("Hang protection invoked.")
-			MsgBox(0, $ProgName, "Hang prevention invoked. BF will now be closed and will restart automatically if seeding is needed.", 10)
-			CloseWindow()
-			StartHangProtectionTimer() ; Reset the hang protection timer
+			CloseWindow("Hang protection invoked.")
+			StopHangProtectionTimer() ; Turn Hang protection off
 		EndIf
 	EndIf
 EndFunc
@@ -271,18 +268,28 @@ EndFunc
 ; Starts/Resets the HangProtectionTimer
 Func StartHangProtectionTimer()
 	If $EnableGameHangProtection == "true" Then
+		$HangProtectionEnabled = True
 		$HangProtectionTimer = TimerInit()
 	EndIf
 EndFunc
 
+
+Func StopHangProtectionTimer()
+	$HangProtectionEnabled = False
+EndFunc
+
 ; Attempts to gracefully close BF4 window, but if it fails, it will hard kill it
-Func CloseWindow()
+Func CloseWindow($reason)
 	LogAll("CloseWindow()")
 	$winClose = WinClose($BFWindowName)
-	If $winClose == 0 Then LogAll("Battlefield 4 window not found.")
+	If $winClose == 0 Then
+		LogAll("Battlefield window not found so can't close.")
+		Return
+	EndIf
 
 	$winClosed = WinWaitClose($BFWindowName, "", 15)
 	If $winClosed ==  1 Then
+		MsgBox(0, $ProgName, "Battlefield closed intentionally." & @CRLF & "Reason: " & $reason, 10)
 		LogAll($BFWindowName & " window closed succesfully.")
 		Return
 	EndIf
