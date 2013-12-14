@@ -1,4 +1,4 @@
-; Battlefield4Seeder.au3 v2.2
+; Battlefield4Seeder.au3 v2.3
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>

@@ -1,3 +1,11 @@
+v2.3
+- removed wait for BF window to exist
+- fixed some of the hang protection logic that may allow many hang protection windows to stack up
+- added logic for idle kick avoidance
+	- caveats:
+		- should work in windowed mode, borderless or full screen mode
+		- may cause BF sound effects to play through speakers (because BF gains focus)
+		- will not work if the player is spawned, only if in the deploy menu or the main menu
 v2.2
 - fixed bug with hang protection timer timing out instaneously after first timeout
 - fixed IE related bugs where current user couldn't be detected
