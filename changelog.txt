@@ -1,3 +1,8 @@
+v2.4
+- merged the BF3 and BF4 seeder tools into 1 tool
+	- it determines which game is being seeded by the server url
+- cleaned up the folder structure to reflect these changes
+- added a folder with default .ini's
 v2.3
 - removed wait for BF window to exist
 - fixed some of the hang protection logic that may allow many hang protection windows to stack up
