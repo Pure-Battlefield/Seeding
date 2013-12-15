@@ -23,6 +23,7 @@ If True Then ; Setup
 	$BattlelogMainPage = ""
 	$CheckUsernameRegex = ""
 	$JoinServerJS = ""
+	$BattlefieldGame = ""
 
 	; Config
 	FileInstall("BFSeederSettings.ini", ".\")
@@ -32,7 +33,6 @@ If True Then ; Setup
 	$MinimumPlayers = GetSetting("MinPlayers", true)
 	$MaximumPlayers = GetSetting("MaxPlayers", true)
 	$Username = GetSetting("Username", true)
-	$BattlefieldGame = GetSetting("BattlefieldGame", true)
 
 	; Defaulted/Optional Config Settings
 	$SleepWhenNotSeeding = GetSetting("SleepWhenNotSeeding", false, "", .2)
@@ -96,6 +96,7 @@ WEnd
 ; Setup specific settings for BF3/BF4
 Func GameSpecificSetup
 	$ProgName = $ProgName & " - " & $BattlefieldGame
+	SetGame()
 
 	If($BattlefieldGame = "bf4") Then
 		$BFWindowName = "[REGEXPTITLE:^Battlefield 4.$]"
@@ -111,6 +112,18 @@ Func GameSpecificSetup
 		$JoinServerJS = 'document.getElementsByClassName("base-button-arrow-almost-gigantic legacy-server-browser-info-button")[0].click()'
 	Else
 		MsgBox(0, $ProgName, "Invalid BattlefieldGame setting. Must be either BF3 or BF4.")
+		Exit
+	EndIf
+EndFunc
+
+; Determines which game is running on the server
+Func SetGame()
+	If(StringInStr($ServerAddress, "bf4", 0) > 0) Then
+		$BattlefieldGame = "bf4"
+	ElseIf(StringInStr($ServerAddress, "bf3", 0) > 0) Then
+		$BattlefieldGame = "bf3"
+	Else
+		MsgBox(0, $ProgName, "Could not determine while Battlefield game the server is running.")
 		Exit
 	EndIf
 EndFunc
