@@ -82,6 +82,9 @@ while 1
 	; Sleep for a period without checking
 	if(WinExists($BFWindowName)) Then
 		LogAll("Seeding.  Sleeping for " & $SleepWhenSeeding & " minutes.")
+		$Full = WinGetTitle ($BFWindowName)
+		$HWnD = WinGetHandle ($Full)
+		WinSetState($HWnD, "", @SW_MINIMIZE)
 		sleep($SleepWhenSeeding * 60 * 1000)
 	Else
 		LogAll("Not seeding.  Sleeping for " & $SleepWhenNotSeeding & " minutes.")
@@ -94,7 +97,7 @@ WEnd
 
 
 ; Setup specific settings for BF3/BF4
-Func GameSpecificSetup
+Func GameSpecificSetup()
 	$ProgName = $ProgName & " - " & $BattlefieldGame
 	SetGame()
 
@@ -268,7 +271,7 @@ Func JoinServer($server_page)
 	Send("!{TAB}")
 	sleep(10000)
 
-	WinSetState($bfWindow, "", @SW_MINIMIZE)
+	;WinSetState($bfWindow, "", @SW_MINIMIZE)
 EndFunc
 
 ; Auto self-kicks when seeding is no longer necessary
