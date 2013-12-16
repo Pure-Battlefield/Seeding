@@ -1,4 +1,4 @@
-; Battlefield4Seeder.au3 v2.2
+; Battlefield4Seeder.au3 v2.3
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -15,6 +15,7 @@ If True Then ; Setup
 	; Global Variables
 	Global $ie = 0
 	Global $HangProtectionTimer
+	Global $HangProtectionEnabled
 
 	; Config
 	FileInstall("BF4SeederSettings.ini", ".\")
@@ -26,10 +27,10 @@ If True Then ; Setup
 	$Username = GetSetting("Username", true)
 
 	; Defaulted/Optional Config Settings
-	$SleepWhenNotSeeding = GetSetting("SleepWhenNotSeeding", false, "", 1)
-	$SleepWhenSeeding = GetSetting("SleepWhenSeeding", false, "", 1)
+	$SleepWhenNotSeeding = GetSetting("SleepWhenNotSeeding", false, "", .2)
+	$SleepWhenSeeding = GetSetting("SleepWhenSeeding", false, "", .2)
 	$DisplayPlayerCount = GetSetting("DisplayPlayerCount", false, "", "true")
-	$PlayerCountRetry = GetSetting("PlayerCountRetry", false, "", 5)
+	$PlayerCountRetry = GetSetting("PlayerCountRetry", false, "", 3000)
 	$EnableLogging = GetSetting("EnableLogging", false, "", "false")
 	$EnableGameHangProtection = GetSetting("EnableGameHangProtection", false, "", "true")
 EndIf
@@ -47,8 +48,11 @@ EndIf
 LogAll("---------------------------")
 LogAll("Battlefield4 Seeder started")
 while 1
+	; Attempt to get the player count
+	;	- this will retry until PlayerCountRetry is reached or it successfully gets the player count
 	$playerCount = AttemptGetPlayerCount($ServerAddress)
 
+	; If the BF window doesn't exist and playerCount is under the min, start seeding
 	if( not( WinExists($BFWindowName)) And ($playerCount < $MinimumPlayers)) Then
 		CheckUsername($Username)
 		LogAll("Player Count/Minimum Threshold: " & $playerCount & "/" & $MinimumPlayers)
@@ -56,22 +60,48 @@ while 1
 		JoinServer($ServerAddress)
 	EndIf
 
+	; If the BF window exists and playerCount is over the maximum, kick self
 	if( WinExists($BFWindowName) And ($playerCount > $MaximumPlayers)) Then
 		LogAll("Player Count/Maximum Threshold: " & $playerCount & "/" & $MaximumPlayers)
 		LogAll("Attempting to KickSelf()")
 	    KickSelf()
 	EndIf
 
+	; Perform Idle Avoidance before sleeping
+	IdleAvoidance()
+
+	; Sleep for a period without checking
 	if(WinExists($BFWindowName)) Then
 		LogAll("Seeding.  Sleeping for " & $SleepWhenSeeding & " minutes.")
+		$Full = WinGetTitle ($BFWindowName)
+		$HWnD = WinGetHandle ($Full)
+		WinSetState($HWnD, "", @SW_MINIMIZE)
 		sleep($SleepWhenSeeding * 60 * 1000)
 	Else
 		LogAll("Not seeding.  Sleeping for " & $SleepWhenNotSeeding & " minutes.")
 		sleep($SleepWhenNotSeeding * 60 * 1000)
 	EndIf
 
+	; If the game has been running for 30 mins, kill it so that it will restart
 	HangProtection()
 WEnd
+
+Func IdleAvoidance()
+	LogAll("IdleAvoidance()")
+	if(not(WinExists($BFWindowName))) Then Return
+
+	LogAll("BF Window exists. Attempting idle avoidance.")
+
+	$Full = WinGetTitle ($BFWindowName) ; Get The Full Title..
+	$HWnD = WinGetHandle ($Full) ; Get The Handle
+	$iButton = 'Left' ; Button The Mouse Will Click I.E. "Left Or Right"
+	$iClicks = '1' ; The Number Of Times To Click
+	$iX = '0' ; The "X" Pos For The Mouse To Click
+	$iY = '0' ; The "Y" Pos For The Mouse To Click
+	If IsHWnD ($HWnD) And WinExists ($Full) <> '0' Then ; Win Check
+		ControlClick ($HWnD, '','', $iButton, $iClicks, $iX, $iY) ; Clicking The Window While Its Minmized
+	EndIf
+EndFunc
 
 ; Get Settings from the ini file
 Func GetSetting($settingName, $required, $notFoundMessage = "", $default = "")
@@ -201,18 +231,19 @@ Func JoinServer($server_page)
 
 	StartHangProtectionTimer() ; Always assume the window was created successfully for Hang Timer
 
-	$bfWindow = WinWaitActive($BFWindowName, "",5*60)
-	If $bfWindow == 0 Then
-		If WinExists($BFWindowName) == 0 Then
-			LogAll("Battlefield window does not exist. Something went wrong.")
-		EndIf
-	EndIf
+	;$bfWindow = WinWaitActive($BFWindowName, "",2*60) ; Wait up to 2 minutes for the window to load
+	;If $bfWindow == 0 Then
+	;	If WinExists($BFWindowName) == 0 Then
+	;		; This will happen if the account does not have required DLC
+	;		LogAll("Battlefield window does not exist. Something went wrong.")
+	;	EndIf
+	;EndIf
 
 	sleep(10000)
 	Send("!{TAB}")
 	sleep(10000)
 
-	WinSetState($bfWindow, "", @SW_MINIMIZE)
+	;WinSetState($bfWindow, "", @SW_MINIMIZE)
 EndFunc
 
 ; Auto self-kicks when seeding is no longer necessary
@@ -224,17 +255,15 @@ Func KickSelf()
 		Exit
 	EndIf
 
-	CloseWindow()
+	CloseWindow("Server filling up so kick seeder.")
 EndFunc
 
 ; Uses a timer to terminate BF periodically to ensure that if the game hangs, it won't be indefinitely
 Func HangProtection()
-	If $EnableGameHangProtection == "true" Then
+	If $HangProtectionEnabled == True Then
 		If TimerDiff($HangProtectionTimer) >= $HangProtectionTimeLimit Then
-			LogAll("Hang protection invoked.")
-			MsgBox(0, $ProgName, "Hang prevention invoked. BF will now be closed and will restart automatically if seeding is needed.", 10)
-			CloseWindow()
-			StartHangProtectionTimer() ; Reset the hang protection timer
+			CloseWindow("Hang protection invoked.")
+			StopHangProtectionTimer() ; Turn Hang protection off
 		EndIf
 	EndIf
 EndFunc
@@ -242,18 +271,28 @@ EndFunc
 ; Starts/Resets the HangProtectionTimer
 Func StartHangProtectionTimer()
 	If $EnableGameHangProtection == "true" Then
+		$HangProtectionEnabled = True
 		$HangProtectionTimer = TimerInit()
 	EndIf
 EndFunc
 
+
+Func StopHangProtectionTimer()
+	$HangProtectionEnabled = False
+EndFunc
+
 ; Attempts to gracefully close BF4 window, but if it fails, it will hard kill it
-Func CloseWindow()
+Func CloseWindow($reason)
 	LogAll("CloseWindow()")
 	$winClose = WinClose($BFWindowName)
-	If $winClose == 0 Then LogAll("Battlefield 4 window not found.")
+	If $winClose == 0 Then
+		LogAll("Battlefield window not found so can't close.")
+		Return
+	EndIf
 
 	$winClosed = WinWaitClose($BFWindowName, "", 15)
 	If $winClosed ==  1 Then
+		MsgBox(0, $ProgName, "Battlefield closed intentionally." & @CRLF & "Reason: " & $reason, 10)
 		LogAll($BFWindowName & " window closed succesfully.")
 		Return
 	EndIf
@@ -307,9 +346,9 @@ Func OpenIEInstance($attemptCount = 0)
 		EndIf
 
 		LogAll("IE instance doesn't exist. Trying again.")
-		OpenIEInstance()
 		sleep(5000)
 		OpenIEInstance($attemptCount + 1)
+		Return
 	EndIf
 	OnAutoItExitRegister("QuitIEInstance")
 EndFunc
@@ -322,6 +361,7 @@ Func LoadInIE($server_page)
 		OpenIEInstance()
 		sleep(5000)
 		LoadInIE($server_page)
+		Return
 	EndIf
 	_IENavigate($ie, $server_page)
 	LogAll("Navigated to " & $server_page)
