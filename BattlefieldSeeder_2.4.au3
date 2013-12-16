@@ -1,4 +1,4 @@
-; BattlefieldSeeder.au3 v2.2
+; BattlefieldSeeder.au3 v2.4
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -9,12 +9,21 @@ If True Then ; Setup
 	$Settingsini = "BFSeederSettings.ini"
 	$ProgName = "Battlefield Auto-Seeder"
 	$LogFileName = "BFSeederLog.log"
-	$BFWindowName = "[REGEXPTITLE:^Battlefield 3.$]"
+
 	$HangProtectionTimeLimit = 30 * 60 * 1000  ;30 minutes
 
 	; Global Variables
-	Global $ie
+	Global $ie = 0
 	Global $HangProtectionTimer
+	Global $HangProtectionEnabled
+
+	; Game-Specific Settings
+	$BFWindowName = ""
+	$PlayerCountRegex = ""
+	$BattlelogMainPage = ""
+	$CheckUsernameRegex = ""
+	$JoinServerJS = ""
+	$BattlefieldGame = ""
 
 	; Config
 	FileInstall("BFSeederSettings.ini", ".\")
@@ -26,10 +35,10 @@ If True Then ; Setup
 	$Username = GetSetting("Username", true)
 
 	; Defaulted/Optional Config Settings
-	$SleepWhenNotSeeding = GetSetting("SleepWhenNotSeeding", false, "", 1)
-	$SleepWhenSeeding = GetSetting("SleepWhenSeeding", false, "", 1)
+	$SleepWhenNotSeeding = GetSetting("SleepWhenNotSeeding", false, "", .2)
+	$SleepWhenSeeding = GetSetting("SleepWhenSeeding", false, "", .2)
 	$DisplayPlayerCount = GetSetting("DisplayPlayerCount", false, "", "true")
-	$PlayerCountRetry = GetSetting("PlayerCountRetry", false, "", 5)
+	$PlayerCountRetry = GetSetting("PlayerCountRetry", false, "", 3000)
 	$EnableLogging = GetSetting("EnableLogging", false, "", "false")
 	$EnableGameHangProtection = GetSetting("EnableGameHangProtection", false, "", "true")
 EndIf
@@ -40,15 +49,19 @@ If True Then ; Initialization
 	_IEErrorNotify(True) ; Notify IE Errors via the console
 	opt("WinTitleMatchMode",4) ; Set the Window TitleMatchMode to use regular expressions
 	;CheckUsername($username) ; Check the Username at the start so the user knows right away if they're logged in correctly
+	GameSpecificSetup() ; Setup settings specific to each game
 EndIf
 
 
 ;~~~~~~~~~~~~~~~~~~~~~ Main ~~~~~~~~~~~~~~~~~~~~~~~~
 LogAll("---------------------------")
-LogAll("Battlefield4 Seeder started")
+LogAll("Battlefield Seeder started")
 while 1
+	; Attempt to get the player count
+	;	- this will retry until PlayerCountRetry is reached or it successfully gets the player count
 	$playerCount = AttemptGetPlayerCount($ServerAddress)
 
+	; If the BF window doesn't exist and playerCount is under the min, start seeding
 	if( not( WinExists($BFWindowName)) And ($playerCount < $MinimumPlayers)) Then
 		CheckUsername($Username)
 		LogAll("Player Count/Minimum Threshold: " & $playerCount & "/" & $MinimumPlayers)
@@ -56,22 +69,67 @@ while 1
 		JoinServer($ServerAddress)
 	EndIf
 
+	; If the BF window exists and playerCount is over the maximum, kick self
 	if( WinExists($BFWindowName) And ($playerCount > $MaximumPlayers)) Then
 		LogAll("Player Count/Maximum Threshold: " & $playerCount & "/" & $MaximumPlayers)
 		LogAll("Attempting to KickSelf()")
 	    KickSelf()
 	EndIf
 
+	; Perform Idle Avoidance before sleeping
+	IdleAvoidance()
+
+	; Sleep for a period without checking
 	if(WinExists($BFWindowName)) Then
 		LogAll("Seeding.  Sleeping for " & $SleepWhenSeeding & " minutes.")
+		$Full = WinGetTitle ($BFWindowName)
+		$HWnD = WinGetHandle ($Full)
+		WinSetState($HWnD, "", @SW_MINIMIZE)
 		sleep($SleepWhenSeeding * 60 * 1000)
 	Else
 		LogAll("Not seeding.  Sleeping for " & $SleepWhenNotSeeding & " minutes.")
 		sleep($SleepWhenNotSeeding * 60 * 1000)
 	EndIf
 
+	; If the game has been running for 30 mins, kill it so that it will restart
 	HangProtection()
 WEnd
+
+
+; Setup specific settings for BF3/BF4
+Func GameSpecificSetup()
+	$ProgName = $ProgName & " - " & $BattlefieldGame
+	SetGame()
+
+	If($BattlefieldGame = "bf4") Then
+		$BFWindowName = "[REGEXPTITLE:^Battlefield 4.$]"
+		$PlayerCountRegex = '"slots".*?"2":{"current":(.*?),'
+		$BattlelogMainPage = "http://battlelog.battlefield.com/bf4/"
+		$CheckUsernameRegex = 'class="username"\W*href="/bf4/user/(.*?)/'
+		$JoinServerJS = 'document.getElementsByClassName("btn btn-primary btn-large large arrow")[0].click()'
+	ElseIf($BattlefieldGame = "bf3") Then
+		$BFWindowName = "[REGEXPTITLE:^Battlefield 3.$]"
+		$PlayerCountRegex = '<td id="server-info-players">(\d+) / \d+</td>'
+		$BattlelogMainPage = "http://battlelog.battlefield.com/bf3/"
+		$CheckUsernameRegex = 'class="username"\W*href="/bf3/user/(.*?)/'
+		$JoinServerJS = 'document.getElementsByClassName("base-button-arrow-almost-gigantic legacy-server-browser-info-button")[0].click()'
+	Else
+		MsgBox(0, $ProgName, "Invalid BattlefieldGame setting. Must be either BF3 or BF4.")
+		Exit
+	EndIf
+EndFunc
+
+; Determines which game is running on the server
+Func SetGame()
+	If(StringInStr($ServerAddress, "bf4", 0) > 0) Then
+		$BattlefieldGame = "bf4"
+	ElseIf(StringInStr($ServerAddress, "bf3", 0) > 0) Then
+		$BattlefieldGame = "bf3"
+	Else
+		MsgBox(0, $ProgName, "Could not determine while Battlefield game the server is running.")
+		Exit
+	EndIf
+EndFunc
 
 ; Get Settings from the ini file
 Func GetSetting($settingName, $required, $notFoundMessage = "", $default = "")
@@ -117,10 +175,11 @@ EndFunc
 
 ; Parse the response for the player count
 Func GetPlayerCount($server_page)
-	;LogAll("GetPlayerCount(" & $server_page & ")")
-	$response =  FetchPage($server_page)
+	LogAll("GetPlayerCount(" & $server_page & ")")
+	;$response =  FetchPage($server_page)
+	$response = LoadInIE($server_page)
 
-	$matches = StringRegExp($response, '<td id="server-info-players">(\d+) / \d+</td>', 1)
+	$matches = StringRegExp($response, $PlayerCountRegex, 1)
 	If @error == 1 Then
 		LogAll("No player count found.")
 		$player_count = -1
@@ -145,10 +204,11 @@ EndFunc
 ; Checks that the expected user is logged in
 Func CheckUsername($username)
 	;LogAll("CheckUsername(" & $username & ")")
-	$server_page = "http://battlelog.battlefield.com/bf3/"
-	$response = FetchPage($server_page)
+	$server_page = $BattlelogMainPage
+	;$response = FetchPage($server_page)
+	$response = LoadInIE($server_page)
 	;LogToFile($response)
-	$matches = StringRegExp($response, 'class="username"\W*href="/bf3/user/(.*?)/', 1)
+	$matches = StringRegExp($response, $CheckUsernameRegex, 1)
 
 	If @error == 1 Then
 		MsgBox(1, $ProgName, "Cannot find logged in user. Please log in and try again.")
@@ -190,28 +250,28 @@ Func JoinServer($server_page)
 		Exit
 	EndIf
 
-	$ie = _IECreate($server_page)
-	if $ie == 0 Then LogAll("IE instance not created: " & $server_page)
-	OnAutoItExitRegister("QuitIEInstance")
-	$ie.document.parentwindow.execScript('document.getElementsByClassName("base-button-arrow-almost-gigantic legacy-server-browser-info-button")[0].click()')
+	$result = LoadInIE($server_page)
+	if($result == 0) Then
+		LogAll("Could not load server page: " & $server_page)
+		Return
+	EndIf
+	$ie.document.parentwindow.execScript($JoinServerJS)
 
 	StartHangProtectionTimer() ; Always assume the window was created successfully for Hang Timer
 
-	$bfWindow = WinWaitActive($BFWindowName, "",5*60)
-	If $bfWindow == 0 Then
-		If WinExists($BFWindowName) == 0 Then
-			LogAll("Battlefield window does not exist. Something went wrong.")
-		EndIf
-	EndIf
+	;$bfWindow = WinWaitActive($BFWindowName, "",2*60) ; Wait up to 2 minutes for the window to load
+	;If $bfWindow == 0 Then
+	;	If WinExists($BFWindowName) == 0 Then
+	;		; This will happen if the account does not have required DLC
+	;		LogAll("Battlefield window does not exist. Something went wrong.")
+	;	EndIf
+	;EndIf
 
 	sleep(10000)
 	Send("!{TAB}")
 	sleep(10000)
-	$ieQuit = _IEQuit($ie)
-	if($ieQuit == 0) Then LogAll("IEQuit fail: " & @CRLF & @error)
-	OnAutoItExitUnRegister("QuitIEInstance")
 
-	WinSetState($bfWindow, "", @SW_MINIMIZE)
+	;WinSetState($bfWindow, "", @SW_MINIMIZE)
 EndFunc
 
 ; Auto self-kicks when seeding is no longer necessary
@@ -223,17 +283,15 @@ Func KickSelf()
 		Exit
 	EndIf
 
-	CloseWindow()
+	CloseWindow("Server filling up so kicked seeder.")
 EndFunc
 
 ; Uses a timer to terminate BF periodically to ensure that if the game hangs, it won't be indefinitely
 Func HangProtection()
-	If $EnableGameHangProtection == "true" Then
+	If $HangProtectionEnabled == True Then
 		If TimerDiff($HangProtectionTimer) >= $HangProtectionTimeLimit Then
-			LogAll("Hang protection invoked.")
-			MsgBox(0, $ProgName, "Hang prevention invoked. BF will now be closed and will restart automatically if seeding is needed.", 10)
-			CloseWindow()
-			StartHangProtectionTimer() ; Reset the hang protection timer
+			CloseWindow("Hang protection invoked.")
+			StopHangProtectionTimer() ; Turn Hang protection off
 		EndIf
 	EndIf
 EndFunc
@@ -241,18 +299,47 @@ EndFunc
 ; Starts/Resets the HangProtectionTimer
 Func StartHangProtectionTimer()
 	If $EnableGameHangProtection == "true" Then
+		$HangProtectionEnabled = True
 		$HangProtectionTimer = TimerInit()
 	EndIf
 EndFunc
 
-; Attempts to gracefully close BF4 window, but if it fails, it will hard kill it
-Func CloseWindow()
+; Stops the HangProtectionTimer
+Func StopHangProtectionTimer()
+	$HangProtectionEnabled = False
+EndFunc
+
+; Clicks in the top left of the window to reset the idle timer
+Func IdleAvoidance()
+	LogAll("IdleAvoidance()")
+	if(not(WinExists($BFWindowName))) Then Return
+
+	LogAll("BF Window exists. Attempting idle avoidance.")
+
+	$Full = WinGetTitle ($BFWindowName) ; Get The Full Title..
+	$HWnD = WinGetHandle ($Full) ; Get The Handle
+	$iButton = 'Left' ; Button The Mouse Will Click I.E. "Left Or Right"
+	$iClicks = '1' ; The Number Of Times To Click
+	$iX = '0' ; The "X" Pos For The Mouse To Click
+	$iY = '0' ; The "Y" Pos For The Mouse To Click
+	If IsHWnD ($HWnD) And WinExists ($Full) <> '0' Then ; Win Check
+		ControlClick ($HWnD, '','', $iButton, $iClicks, $iX, $iY) ; Clicking The Window While Its Minmized
+	EndIf
+EndFunc
+
+
+; Attempts to gracefully close BF window, but if it fails, it will hard kill it
+Func CloseWindow($reason)
 	LogAll("CloseWindow()")
 	$winClose = WinClose($BFWindowName)
-	If $winClose == 0 Then LogAll("Battlefield 4 window not found.")
+	If $winClose == 0 Then
+		LogAll("Battlefield window not found so can't close.")
+		Return
+	EndIf
 
 	$winClosed = WinWaitClose($BFWindowName, "", 15)
 	If $winClosed ==  1 Then
+		MsgBox(0, $ProgName, "Battlefield closed intentionally." & @CRLF & "Reason: " & $reason, 10)
 		LogAll($BFWindowName & " window closed succesfully.")
 		Return
 	EndIf
@@ -263,7 +350,7 @@ EndFunc
 
 ; Callback for IEError
 Func MyIEError()
-	LogAll("MyIEError():")
+	LogAll("MyIEError()")
 	MsgBox(0,$ProgName,"Internet Explorer-related error. Are you logged in to Battlelog? Script closing...")
 
 	; Important: the error object variable MUST be named $oIEErrorHandler
@@ -294,11 +381,46 @@ Func MyIEError()
 	exit
 EndFunc
 
+; Opens a global IE instance
+Func OpenIEInstance($attemptCount = 0)
+	LogAll("OpenIEInstance(), attempts: " & $attemptCount)
+	$ie = _IECreate("about:blank", 0, 0)
+	if($ie == 0) Then
+		If($attemptCount > 4) Then
+			LogAll("Cannot create IE Instance. Script closing...")
+			MsgBox(0, $ProgName, "Cannot open IE. Script closing...")
+			Exit
+		EndIf
+
+		LogAll("IE instance doesn't exist. Trying again.")
+		sleep(5000)
+		OpenIEInstance($attemptCount + 1)
+		Return
+	EndIf
+	OnAutoItExitRegister("QuitIEInstance")
+EndFunc
+
+; Fetches a page in IE
+Func LoadInIE($server_page)
+	LogAll("Fetch a page using IE")
+	if($ie == 0) Then
+		LogAll("IE instance doesn't exist. Trying again.")
+		OpenIEInstance()
+		sleep(5000)
+		LoadInIE($server_page)
+		Return
+	EndIf
+	_IENavigate($ie, $server_page)
+	LogAll("Navigated to " & $server_page)
+	Return _IEBodyReadHTML($ie)
+EndFunc
+
 ; Closes IE Instance
 Func QuitIEInstance()
 	LogAll("QuitIEInstance()")
 	$ieQuit = _IEQuit($ie)
 	if($ieQuit == 0) Then LogAll("IEQuit fail: " & @CRLF & @error)
+	OnAutoItExitUnRegister("QuitIEInstance")
 EndFunc
 
 ; Check to make sure there is only 1 instance of the Seeder running
