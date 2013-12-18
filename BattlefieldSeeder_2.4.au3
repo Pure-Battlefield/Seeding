@@ -10,8 +10,6 @@ If True Then ; Setup
 	$ProgName = "Battlefield Auto-Seeder"
 	$LogFileName = "BFSeederLog.log"
 
-	$HangProtectionTimeLimit = 30 * 60 * 1000  ;30 minutes
-
 	; Global Variables
 	Global $ie = 0
 	Global $HangProtectionTimer
@@ -41,6 +39,7 @@ If True Then ; Setup
 	$PlayerCountRetry = GetSetting("PlayerCountRetry", false, "", 3000)
 	$EnableLogging = GetSetting("EnableLogging", false, "", "false")
 	$EnableGameHangProtection = GetSetting("EnableGameHangProtection", false, "", "true")
+	$HangProtectionTimeLimit = GetSetting("HangProtectionTimeLimit", false, "", 2)
 EndIf
 
 If True Then ; Initialization
@@ -289,7 +288,8 @@ EndFunc
 ; Uses a timer to terminate BF periodically to ensure that if the game hangs, it won't be indefinitely
 Func HangProtection()
 	If $HangProtectionEnabled == True Then
-		If TimerDiff($HangProtectionTimer) >= $HangProtectionTimeLimit Then
+		$HangProtectionTimeLimitInHours = $HangProtectionTimeLimit * 60 * 60 * 1000
+		If TimerDiff($HangProtectionTimer) >= $HangProtectionTimeLimitInHours Then
 			CloseWindow("Hang protection invoked.")
 			StopHangProtectionTimer() ; Turn Hang protection off
 		EndIf

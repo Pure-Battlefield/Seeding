@@ -35,9 +35,15 @@ SleepWhenSeeding is active when BF is open, SleepWhenNotSeeding is active when B
 **PlayerCountRetry** - The number of retries the seeder will attempt to get the player count before quitting. Set to -1 to retry indefinitely.   
 **EnableLogging** - Enables logging to an output file that can aid in troubleshooting. Default is false.   
 **EnableGameHangProtection** - Causes the BF4 game to be closed every 30 mins and re-opened to deal with the game hanging   
+**GameHangProtectionTimeLimit** - The amount of time, in hours, before GameHangProtection is invoked
 
 
-### Changelog      
+### Changelog 
+
+##### v2.5
+- made the HangProtectionTimeLimit configurable in the .ini file
+   - time is in hours
+   - default is 2 hours     
 ##### v2.4
 
 - merged the BF3 and BF4 seeder tools into 1 tool   
