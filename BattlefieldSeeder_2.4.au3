@@ -3,6 +3,7 @@
 #include <IE.au3>
 #include <Misc.au3>
 #include <File.au3>
+#include "W7Sound.au3"
 
 If True Then ; Setup
 	; Global Constants
@@ -22,6 +23,7 @@ If True Then ; Setup
 	$CheckUsernameRegex = ""
 	$JoinServerJS = ""
 	$BattlefieldGame = ""
+	$Mutted = False
 
 	; Config
 	FileInstall("BFSeederSettings.ini", ".\")
@@ -40,15 +42,22 @@ If True Then ; Setup
 	$EnableLogging = GetSetting("EnableLogging", false, "", "false")
 	$EnableGameHangProtection = GetSetting("EnableGameHangProtection", false, "", "true")
 	$HangProtectionTimeLimit = GetSetting("HangProtectionTimeLimit", false, "", 2)
+	$MuteGame = GetSetting("AutoMuteGame", false, "", "false")
 EndIf
 
 If True Then ; Initialization
 	CheckSingleton() ; Check there is only one instance
-	_IEErrorHandlerRegister("MyIEError") ; Register Global IE Error Handler
+	;_IEErrorHandlerRegister("MyIEError") ; Register Global IE Error Handler
 	_IEErrorNotify(True) ; Notify IE Errors via the console
 	opt("WinTitleMatchMode",4) ; Set the Window TitleMatchMode to use regular expressions
 	;CheckUsername($username) ; Check the Username at the start so the user knows right away if they're logged in correctly
 	GameSpecificSetup() ; Setup settings specific to each game
+	if($ie == 0) Then
+		LogAll("IE instance doesn't exist. Trying again.")
+		OpenIEInstance()
+		sleep(8000)
+	 EndIf
+	 OnAutoItExitRegister ("UnmuteGame")
 EndIf
 
 
@@ -86,7 +95,7 @@ while 1
 		WinSetState($HWnD, "", @SW_MINIMIZE)
 		sleep($SleepWhenSeeding * 60 * 1000)
 	Else
-		LogAll("Not seeding.  Sleeping for " & $SleepWhenNotSeeding & " minutes.")
+		LogAll("Not seeding.  Sleeping for " & $SleepWhenNotSeeding & " minutes." & " Cant find window:" & $BFWindowName)
 		sleep($SleepWhenNotSeeding * 60 * 1000)
 	EndIf
 
@@ -101,7 +110,7 @@ Func GameSpecificSetup()
 	SetGame()
 
 	If($BattlefieldGame = "bf4") Then
-		$BFWindowName = "[REGEXPTITLE:^Battlefield 4.$]"
+		$BFWindowName = "Battlefield 4" ; not sure why the regex wasnt working. Didnt bother to figure out why.
 		$PlayerCountRegex = '"slots".*?"2":{"current":(.*?),'
 		$BattlelogMainPage = "http://battlelog.battlefield.com/bf4/"
 		$CheckUsernameRegex = 'class="username"\W*href="/bf4/user/(.*?)/'
@@ -177,7 +186,6 @@ Func GetPlayerCount($server_page)
 	LogAll("GetPlayerCount(" & $server_page & ")")
 	;$response =  FetchPage($server_page)
 	$response = LoadInIE($server_page)
-
 	$matches = StringRegExp($response, $PlayerCountRegex, 1)
 	If @error == 1 Then
 		LogAll("No player count found.")
@@ -269,6 +277,7 @@ Func JoinServer($server_page)
 	sleep(10000)
 	Send("!{TAB}")
 	sleep(10000)
+	MuteGame()
 
 	;WinSetState($bfWindow, "", @SW_MINIMIZE)
 EndFunc
@@ -443,3 +452,26 @@ Func LogToFile($logMessage)
 		_FileWriteLog(".\" & $LogFileName, $logMessage)
 	EndIf
 EndFunc
+
+ ; Mute Game if option set
+Func MuteGame()
+   If (WinExists($BFWindowName) And $MuteGame == "true") Then
+	  $Full = WinGetTitle ($BFWindowName)
+	  $HWnD = WinGetHandle ($Full)
+	  _MuteVolume("Battlefield 4™")
+	  $Mutted = True
+	  LogAll("Mutted")
+   EndIf
+EndFunc
+
+ ; Unmute Game if it was mutted
+Func UnmuteGame()
+   if ($Mutted) Then
+      $Full = WinGetTitle ($BFWindowName)
+	  $HWnD = WinGetHandle ($Full)
+	  _MuteVolume("Battlefield 4™")
+	  LogAll("Unmutted")
+   EndIf
+EndFunc
+
+
