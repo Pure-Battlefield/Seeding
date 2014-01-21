@@ -1,7 +1,7 @@
 ## battlefield-seeder
 
 Coded by Tim Froehlich (Avatar2453, Avatar_Ko, Advacar, etc)
-Modified by Gregory Sarrica
+Modified by Gregory Sarrica, Brad Rhodes
 
 Goal: This script was made to automate seeding of Battlefield Servers. It will:
 
@@ -41,17 +41,15 @@ SleepWhenSeeding is active when BF is open, SleepWhenNotSeeding is active when B
 
 ### Changelog 
 
-##### v2.6
+##### v2.5
 - fix for client patch update that broke idle avoidence
 - fix for cannot find player count on startup
 - feature to add auto mute of game
 
-##### v2.5
+##### v2.4
 - made the HangProtectionTimeLimit configurable in the .ini file
    - time is in hours
    - default is 2 hours     
-##### v2.4
-
 - merged the BF3 and BF4 seeder tools into 1 tool   
    - it determines which game is being seeded by the server url
 - cleaned up the folder structure to reflect these changes
