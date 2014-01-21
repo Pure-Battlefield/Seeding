@@ -1,6 +1,7 @@
 ## battlefield-seeder
 
 Coded by Tim Froehlich (Avatar2453, Avatar_Ko, Advacar, etc)
+Modified by Gregory Sarrica
 
 Goal: This script was made to automate seeding of Battlefield Servers. It will:
 
@@ -36,9 +37,14 @@ SleepWhenSeeding is active when BF is open, SleepWhenNotSeeding is active when B
 **EnableLogging** - Enables logging to an output file that can aid in troubleshooting. Default is false.   
 **EnableGameHangProtection** - Causes the BF4 game to be closed every 30 mins and re-opened to deal with the game hanging   
 **GameHangProtectionTimeLimit** - The amount of time, in hours, before GameHangProtection is invoked
-
+**AutoMuteGame** - Attempts to automatically mute the game after it opens. Set to true or false
 
 ### Changelog 
+
+##### v2.6
+- fix for client patch update that broke idle avoidence
+- fix for cannot find player count on startup
+- feature to add auto mute of game
 
 ##### v2.5
 - made the HangProtectionTimeLimit configurable in the .ini file
