@@ -274,7 +274,7 @@ EndFunc
 Func JoinServer($server_page)
 	LogAll("JoinServer(" & $server_page &")")
 	$rc = MsgBox(1, $ProgName, "Auto-seeding in five seconds...", 5)
-	if($rc == 2) Then
+	if( $rc == 2) Then
 		LogAll("Auto-seeding manually cancelled. Exiting.")
 		MsgBox(0, $ProgName, "Closing script.")
 		Exit
@@ -441,7 +441,7 @@ Func LoadInIE($server_page)
 		sleep(5000)
 		LoadInIE($server_page)
 		Return
-	 EndIf
+	EndIf
 	_IENavigate($ie, $server_page)
 	LogAll("Navigated to " & $server_page)
 	Return _IEBodyReadHTML($ie)
