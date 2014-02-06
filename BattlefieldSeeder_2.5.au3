@@ -68,8 +68,8 @@ LogAll("Battlefield Seeder started")
 while 1
 	; Attempt to get the player count
 	;	- this will retry until PlayerCountRetry is reached or it successfully gets the player count
-	$playerCount = AttemptGetPlayerCount($ServerAddress[0])
-	Global $playerCountTRY[] = [AttemptGetPlayerCount($ServerAddress[0]), AttemptGetPlayerCount($ServerAddress[1]), AttemptGetPlayerCount($ServerAddress[2])]
+	$playerCount = AttemptGetPlayerCount($ServerAddress)
+	Global $playerCountTRY[] = [AttemptGetPlayerCount($ServerAddressTRY[0]), AttemptGetPlayerCount($ServerAddressTRY[1]), AttemptGetPlayerCount($ServerAddressTRY[2])]
 
 	;      Find minimum player count. Once we have more Seeders.
 	;Local $index = 1
@@ -85,7 +85,7 @@ while 1
 	;    then 2, then 3
 	$index = 0
 	For $n = 2 To 0 Step -1
-	   if ($playerCount[$n] < $MinimumPlayers) Then
+	   if ($playerCountTRY[$n] < $MinimumPlayers) Then
 		  $index = $n
 	   EndIf
     Next
