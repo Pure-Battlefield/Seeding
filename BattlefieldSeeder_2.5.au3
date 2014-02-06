@@ -29,7 +29,9 @@ If True Then ; Setup
 	FileInstall("BFSeederSettings.ini", ".\")
 
 	; Required Config Settings
-	$ServerAddress = GetSetting("ServerAddress", true)
+	$ServerAddress[1] = GetSetting("ServerAddress1", true)
+	$ServerAddress[2] = GetSetting("ServerAddress2", true)
+	$ServerAddress[3] = GetSetting("ServerAddress3", true)
 	$MinimumPlayers = GetSetting("MinPlayers", true)
 	$MaximumPlayers = GetSetting("MaxPlayers", true)
 	$Username = GetSetting("Username", true)
@@ -67,18 +69,39 @@ LogAll("Battlefield Seeder started")
 while 1
 	; Attempt to get the player count
 	;	- this will retry until PlayerCountRetry is reached or it successfully gets the player count
-	$playerCount = AttemptGetPlayerCount($ServerAddress)
+	$playerCount[1] = AttemptGetPlayerCount($ServerAddress[1])
+	$playerCount[2] = AttemptGetPlayerCount($ServerAddress[2])
+	$playerCount[3] = AttemptGetPlayerCount($ServerAddress[3])
+
+	;      Find minimum player count. Once we have more Seeders.
+	;Local $index = 1
+	;Local $minimum = 100
+	;For $n = 1 To 3 Step +1
+	;   if ($playerCount[$n] < $minimum)
+	;	  $minimum = $playerCount[$n]
+	;	  $index = $n
+	;  EndIf
+    ; Next
+
+	; Check if Server 1 has minimum, then 2, then 3. Seeder will join 1 if it is below threshold,
+	;    then 2, then 3
+	Local $index = 1
+	For $n = 3 To 1 Step -1
+	   if ($playerCount[$n] < $MinimumPlayers)
+		  $index = $n
+	   EndIf
+    Next
 
 	; If the BF window doesn't exist and playerCount is under the min, start seeding
-	if( not( WinExists($BFWindowName)) And ($playerCount < $MinimumPlayers)) Then
+	if( not( WinExists($BFWindowName)) And ($playerCount[$index] < $MinimumPlayers)) Then
 		CheckUsername($Username)
 		LogAll("Player Count/Minimum Threshold: " & $playerCount & "/" & $MinimumPlayers)
 		LogAll("Attempting to join server.")
-		JoinServer($ServerAddress)
+		JoinServer($ServerAddress[$index])
 	EndIf
 
 	; If the BF window exists and playerCount is over the maximum, kick self
-	if( WinExists($BFWindowName) And ($playerCount > $MaximumPlayers)) Then
+	if( WinExists($BFWindowName) And ($playerCount[$index] > $MaximumPlayers)) Then
 		LogAll("Player Count/Maximum Threshold: " & $playerCount & "/" & $MaximumPlayers)
 		LogAll("Attempting to KickSelf()")
 	    KickSelf()
