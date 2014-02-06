@@ -6,11 +6,11 @@ Modified by Gregory Sarrica, Brad Rhodes, Sam Hecht
 Goal: This script was made to automate seeding of Battlefield Servers. It will:
 
 A server will be chosen based on order entered into settings file, player count, and minimum player count setting
-(Threshold will be dependent on size of server)
+(Threshold will be dependent on size of server) Psuedocode:
 
-	if Server1 below Threshold --> Server = Server1
+	if Server0 below Threshold --> Server = Server0
+	elif Server1 below Threshold --> Server = Server1
 	elif Server2 below Threshold --> Server = Server2
-	elif Server3 below Threshold --> Server = Server3
 	
 Join chosen server
 After joining, will minimize the game so that it takes less resources
@@ -34,15 +34,15 @@ These specify how often (in minutes) to open up internet explorer and check the 
 SleepWhenSeeding is active when BF is open, SleepWhenNotSeeding is active when BF is not open.
 
 #### Settings:
-**ServerAddress1** - set the address of the server you want to join first to monitor/seed  
-**ServerAddress2** -                                                second  
-**ServerAddress3** -                                                third  
-**MinPlayers1** - (for Server 1) auto-seeding will occur if player count is below this threshold   
-**MaxPlayers1** - (for Server 1) BF4 will exit if player count is above this threshold  
-**MinPlayers2** - (for Server 2)  
-**MaxPlayers2** - (for Server 2)  
-**MinPlayers3** - (for Server 3)  
-**MaxPlayers3** - (for Server 3)  
+**ServerAddress0** - set the address of the server you want to join first to monitor/seed  
+**ServerAddress1** -                                                second  
+**ServerAddress2** -                                                third  
+**MinPlayers0** - (for Server 1) auto-seeding will occur if player count is below this threshold   
+**MaxPlayers0** - (for Server 1) BF4 will exit if player count is above this threshold  
+**MinPlayers1** - (for Server 2)  
+**MaxPlayers1** - (for Server 2)  
+**MinPlayers2** - (for Server 3)  
+**MaxPlayers2** - (for Server 3)  
 **Username** - set to your Battlelog username   
 **SleepWhenNotSeeding** - Explained above   
 **SleepWhenSeeding** - ExplainedAbove   
