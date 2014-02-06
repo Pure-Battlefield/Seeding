@@ -32,7 +32,7 @@ If True Then ; Setup
 	$ServerAddress = GetSetting("ServerAddress0", true)
 	Global $ServerAddressTRY[] = [GetSetting("ServerAddress0", true), GetSetting("ServerAddress1", true), GetSetting("ServerAddress2", true)]
 	$MinimumPlayers = GetSetting("MinPlayers0", true)
-	Global $MinimumPlayersTRY[] = [GetSetting("MinPlayers0", true), GetSetting("MinPlayers1", true), GetSetting("MinPlayer2", true)]
+	Global $MinimumPlayersTRY[] = [GetSetting("MinPlayers0", true), GetSetting("MinPlayers1", true), GetSetting("MinPlayers2", true)]
 	$MaximumPlayers = GetSetting("MaxPlayers0", true)
 	Global $MaximumPlayersTRY[] = [GetSetting("MaxPlayers0", true), GetSetting("MaxPlayers1", true), GetSetting("MaxPlayers2", true)]
 	$Username = GetSetting("Username", true)
@@ -93,7 +93,7 @@ while 1
     Next
     $ServerAddress = $ServerAddressTRY[$index]
 	$playerCount = $playerCountTRY[$index]
-	$MinimumPlayers = $MinimumPlayers TRY[$index]
+	$MinimumPlayers = $MinimumPlayersTRY[$index]
 	$MaximumPlayers = $MaximumPlayersTRY[$index]
 
 	; If the BF window doesn't exist and playerCount is under the min, start seeding
