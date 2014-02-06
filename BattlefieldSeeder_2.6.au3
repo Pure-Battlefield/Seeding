@@ -1,4 +1,4 @@
-; BattlefieldSeeder.au3 v2.5
+; BattlefieldSeeder.au3 v2.6
 #include <Inet.au3>
 #include <IE.au3>
 #include <Misc.au3>
@@ -31,8 +31,10 @@ If True Then ; Setup
 	; Required Config Settings
 	$ServerAddress = GetSetting("ServerAddress0", true)
 	Global $ServerAddressTRY[] = [GetSetting("ServerAddress0", true), GetSetting("ServerAddress1", true), GetSetting("ServerAddress2", true)]
-	$MinimumPlayers = GetSetting("MinPlayers", true)
-	$MaximumPlayers = GetSetting("MaxPlayers", true)
+	$MinimumPlayers = GetSetting("MinPlayers0", true)
+	Global $MinimumPlayersTRY[] = [GetSetting("MinPlayers0", true), GetSetting("MinPlayers1", true), GetSetting("MinPlayer2", true)]
+	$MaximumPlayers = GetSetting("MaxPlayers0", true)
+	Global $MaximumPlayersTRY[] = [GetSetting("MaxPlayers0", true), GetSetting("MaxPlayers1", true), GetSetting("MaxPlayers2", true)]
 	$Username = GetSetting("Username", true)
 
 	; Defaulted/Optional Config Settings
@@ -85,12 +87,14 @@ while 1
 	;    then 2, then 3
 	$index = 0
 	For $n = 2 To 0 Step -1
-	   if ($playerCountTRY[$n] < $MinimumPlayers) Then
+	   if ($playerCountTRY[$n] < $MinimumPlayersTRY[$n]) Then
 		  $index = $n
 	   EndIf
     Next
     $ServerAddress = $ServerAddressTRY[$index]
 	$playerCount = $playerCountTRY[$index]
+	$MinimumPlayers = $MinimumPlayers TRY[$index]
+	$MaximumPlayers = $MaximumPlayersTRY[$index]
 
 	; If the BF window doesn't exist and playerCount is under the min, start seeding
 	if( not( WinExists($BFWindowName)) And ($playerCount < $MinimumPlayers)) Then
@@ -481,7 +485,7 @@ Func MuteGame()
    If (WinExists($BFWindowName) And $MuteGame == "true") Then
 	  $Full = WinGetTitle ($BFWindowName)
 	  $HWnD = WinGetHandle ($Full)
-	  _MuteVolume("Battlefield 4™")
+	  _MuteVolume("Battlefield 4ï¿½")
 	  $Mutted = True
 	  LogAll("Mutted")
    EndIf
@@ -492,7 +496,7 @@ Func UnmuteGame()
    if ($Mutted) Then
       $Full = WinGetTitle ($BFWindowName)
 	  $HWnD = WinGetHandle ($Full)
-	  _MuteVolume("Battlefield 4™")
+	  _MuteVolume("Battlefield 4ï¿½")
 	  LogAll("Unmutted")
    EndIf
 EndFunc
