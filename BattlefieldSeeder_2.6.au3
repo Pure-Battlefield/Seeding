@@ -29,12 +29,12 @@ If True Then ; Setup
 	FileInstall("BFSeederSettings.ini", ".\")
 
 	; Required Config Settings
-	$ServerAddress = GetSetting("ServerAddress0", true)
 	Global $ServerAddressTRY[] = [GetSetting("ServerAddress0", true), GetSetting("ServerAddress1", true), GetSetting("ServerAddress2", true)]
-	$MinimumPlayers = GetSetting("MinPlayers0", true)
+	$ServerAddress = $ServerAddressTRY[0]
 	Global $MinimumPlayersTRY[] = [GetSetting("MinPlayers0", true), GetSetting("MinPlayers1", true), GetSetting("MinPlayers2", true)]
-	$MaximumPlayers = GetSetting("MaxPlayers0", true)
+	$MinimumPlayers = $MinimumPlayersTRY[0]
 	Global $MaximumPlayersTRY[] = [GetSetting("MaxPlayers0", true), GetSetting("MaxPlayers1", true), GetSetting("MaxPlayers2", true)]
+	$MaximumPlayers = $MaximumPlayersTry[0]
 	$Username = GetSetting("Username", true)
 
 	; Defaulted/Optional Config Settings
@@ -70,8 +70,8 @@ LogAll("Battlefield Seeder started")
 while 1
 	; Attempt to get the player count
 	;	- this will retry until PlayerCountRetry is reached or it successfully gets the player count
-	$playerCount = AttemptGetPlayerCount($ServerAddress)
 	Global $playerCountTRY[] = [AttemptGetPlayerCount($ServerAddressTRY[0]), AttemptGetPlayerCount($ServerAddressTRY[1]), AttemptGetPlayerCount($ServerAddressTRY[2])]
+    $playerCount = $playerCountTRY[0]
 
 	;      Find minimum player count. Once we have more Seeders.
 	;Local $index = 1
@@ -85,7 +85,7 @@ while 1
 
 	; Check if Server 1 has minimum, then 2, then 3. Seeder will join 1 if it is below threshold,
 	;    then 2, then 3
-	$index = 0
+	$index = -1
 	For $n = 2 To 0 Step -1
 	   if ($playerCountTRY[$n] < $MinimumPlayersTRY[$n]) Then
 		  $index = $n
@@ -277,7 +277,7 @@ EndFunc
 ; Triggers server join in Battlelog
 Func JoinServer($server_page)
 	LogAll("JoinServer(" & $server_page &")")
-	$rc = MsgBox(1, $ProgName, "Auto-seeding in five seconds...", 5)
+	$rc = MsgBox(1, $ProgName, "Auto-seeding in five seconds..." & @LF & $server_page, 5)
 	if( $rc == 2) Then
 		LogAll("Auto-seeding manually cancelled. Exiting.")
 		MsgBox(0, $ProgName, "Closing script.")
