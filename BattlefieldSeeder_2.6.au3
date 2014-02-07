@@ -141,7 +141,7 @@ Func GameSpecificSetup()
 		$PlayerCountRegex = '"slots".*?"2":{"current":(.*?),'
 		$BattlelogMainPage = "http://battlelog.battlefield.com/bf4/"
 		$CheckUsernameRegex = 'class="username"\W*href="/bf4/user/(.*?)/'
-		$JoinServerJS = 'document.getElementsByClassName("btn btn-primary btn-large large arrow")[0].click()'
+		$JoinServerJS = 'document.querySelector("[data-track=\"serverbrowser.server.join\"]").click()'
 	ElseIf($BattlefieldGame = "bf3") Then
 		$BFWindowName = "[REGEXPTITLE:^Battlefield 3.$]"
 		$PlayerCountRegex = '<td id="server-info-players">(\d+) / \d+</td>'
