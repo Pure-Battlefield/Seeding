@@ -85,7 +85,7 @@ while 1
 
 	; Check if Server 1 has minimum, then 2, then 3. Seeder will join 1 if it is below threshold,
 	;    then 2, then 3
-	$index = -1
+	$index = 0
 	For $n = 2 To 0 Step -1
 	   if ($playerCountTRY[$n] < $MinimumPlayersTRY[$n]) Then
 		  $index = $n
